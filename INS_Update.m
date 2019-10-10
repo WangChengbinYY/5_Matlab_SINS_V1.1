@@ -96,7 +96,7 @@ insdata_now.Q_b_n = Math_QmulQ(Math_QmulQ(T_Q_nm_1_nm,insdata_pre.Q_b_n),T_Q_bm_
 %   由 四元数 求解对应的 DCM
 insdata_now.C_b_n = Att_Q2DCM(insdata_now.Q_b_n);
 %   由 DCM 更新 当前时刻的姿态
-insdata_now.att = change_DCM2euler(insdata_now.C_b_n);
+insdata_now.att = Att_DCM2euler(insdata_now.C_b_n);
 
 %% 五、计算参数更新   
 INSData_Now = insdata_now;

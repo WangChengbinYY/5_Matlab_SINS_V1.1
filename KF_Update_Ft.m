@@ -18,14 +18,14 @@ if(mode == 1)
         M_2(3,1)=V_E*sec_lat*sec_lat/Rnh;
         M_2(3,3)=-V_E*tan_lat/Rnh/Rnh;
     M_ap = M_1 + M_2;
-    M_aa = -askew(w_in_n);
+    M_aa = -Math_v2m_askew(w_in_n);
     M_av = O33; 
         M_av(1,2)=-1/Rmh; M_av(2,1)=1/Rnh;M_av(3,1)=tan_lat/Rnh;
-    M_va = askew(f_ib_n);
+    M_va = Math_v2m_askew(f_ib_n);
     M_vv = O33;
-        Temp_Vn_askew = askew(InsData.vel);
+        Temp_Vn_askew = Math_v2m_askew(InsData.vel);
         Temp = w_ie_n+w_in_n;
-        Temp_w_askew = askew(Temp);
+        Temp_w_askew = Math_v2m_askew(Temp);
         M_vv = Temp_Vn_askew*M_av - Temp_w_askew;
     M_vp = Temp_Vn_askew*(2*M_1+M_2);   %这里考虑 g 重力偏差等误差的影响 非常重要！！！！    
         g0 = 9.7803267714;  slat = sin(lat); clat=cos(lat);    

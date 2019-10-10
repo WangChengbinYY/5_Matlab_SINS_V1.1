@@ -1,14 +1,16 @@
 % ADIS16467静止放置 KF 处理
+% 观测数据包括 位置 速度 
 
+clear;
 
 load('trj10ms_imuerr.mat');
-
+load('右脚桌面静止_20190716第2组.mat');
 G_Const = CONST_Init();
 G_IMU.Hz = 200;  
-Ts = 1/G_IMU.Hz;  %采样间隔100ms
+Ts = 1/G_IMU.Hz;  %采样间隔50ms
 
 [L,m] = size(Data_IMU_R);
-L = 200*10;
+% L = 200*60;
 
 % 设置初始信息
 G_Start_Att = [0;0;0];
@@ -38,6 +40,8 @@ j=1;
 
 IMUError_Bias = zeros(6,1);
 
+ profile on
+
 % 纯惯导解算
 for i=1:L
     INSData_Now.time = Data_IMU_R(i,1);    
@@ -54,7 +58,7 @@ for i=1:L
     %累积计算 KF 的Phi 和 Q
     [Ft,Gt] = KF_Update_Ft(mode,INSData_Now);
     KF.Ft = Ft; KF.Gt = Gt;
-    [Fk,Rk,Phikk_1,Qk_1] = KF_Update_C2D(mode,KF,Ts,3);
+    [Fk,Rk,Phikk_1,Qk_1] = KF_Update_C2D(mode,KF,Ts,2);
     KF.Fk = Fk;
     KF.Rk = Rk;
     KF.Phikk_1 = Phikk_1*KF.Phikk_1;
@@ -99,5 +103,7 @@ for i=1:L
     
     INSData_Pre =  INSData_Now;
 end
-
-Plot_AVP(Result_AVP);
+profile viewer
+profile off
+% Plot_AVP_Group(Result_AVP);
+Plot_AVP_XkPk_Group(Result_AVP,XkPk);

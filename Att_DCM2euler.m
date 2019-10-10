@@ -5,7 +5,7 @@ function Euler = Att_DCM2euler(C_b_n)
 % Output:   Euler - Euler=[pitch; roll; yaw] in radians
 %
 
-
+Euler = zeros(3,1);
 pitch = asin(C_b_n(3,2));
 Euler(1,1) = pitch;
 roll = -atan(C_b_n(3,1)/C_b_n(3,3));
