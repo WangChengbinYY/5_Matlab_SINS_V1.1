@@ -1,10 +1,12 @@
-function INSData = INS_DataInit(G_Const,time,att,vel,pos,gyro,acc,T)
+function INSData = INS_DataInit(G_Const,time,att,vel,pos,eb,db,T)
 % 初始化惯导解算结构体
-% 输入：pos[lat lon h]'
+% 输入：G_Const 常值参数
+%       time 采样时刻
 %       att[pitch roll yaw]'
 %       vel[v_e v_n v_u]'
-%       gyro[x y z]'  角速率
-%       acc[x y z]'   加速度
+%       pos[lat lon h]'
+%       eb[x y z]' - gyro constant bias (rad/s)    
+%       db[x y z]' - acc constant bias (m/s)
 %       T  采样间隔
 
 %% 主要数据区
@@ -14,11 +16,13 @@ function INSData = INS_DataInit(G_Const,time,att,vel,pos,gyro,acc,T)
     INSData.pos = pos;
        
 %% 传感器数据
-    INSData.w_ib_b = gyro;                    %陀螺输出 角速率
-    INSData.DeltaTheta_ib_b = gyro*T;         %陀螺输出 角增量
-    INSData.f_ib_b = acc;                     %加计输出 加速度
-    INSData.DeltaV_ib_b = acc*T;              %加计输出 速度增量
-
+    INSData.w_ib_b = zeros(3,1);                    %陀螺输出 角速率
+    INSData.DeltaTheta_ib_b = zeros(3,1);         %陀螺输出 角增量
+    INSData.f_ib_b = zeros(3,1);                     %加计输出 加速度
+    INSData.DeltaV_ib_b = zeros(3,1);              %加计输出 速度增量
+    
+    INSData.eb = eb;   %xyz陀螺零偏
+    INSData.db = db;   %xyz加计零偏
 %% 姿态参数转换
     INSData.C_b_n = Att_Euler2DCM(INSData.att);
     INSData.Q_b_n = Att_DCM2Q(INSData.C_b_n);    
@@ -32,14 +36,9 @@ function INSData = INS_DataInit(G_Const,time,att,vel,pos,gyro,acc,T)
     INSData.w_en_n          = Earth_get_w_en_n(pos(1,1),INSData.vel,INSData.Rmh,INSData.Rnh);
     INSData.w_in_n          = INSData.w_ie_n+INSData.w_en_n;
     INSData.wie             = G_Const.earth_wie;
-    INSData.f_ib_n          = [0.0;0.0;0.0];    
+    INSData.f_ib_n          = zeros(3,1);    
     
-%暂未看懂干啥用的    
-%     INSData.phi             = [0.0;0.0;0.0];
-%     INSData.DeltaV_n_sf     = [0.0;0.0;0.0];
-%     
 
-%     INSData.fb              = [0.0;0.0;0.0];    %补偿以后的
     
     
     

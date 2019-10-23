@@ -126,16 +126,16 @@ function Plot_AVP_XkPk_Group(AVP0,XkPk)
     set(gcf,'position',[250,250,1200,480]);
     subplot(3,3,1);
     temp = 180/pi;
-    plot(AVP0(:,1),AVP0(:,8).*temp);
+    plot(AVP0(:,1),(AVP0(:,8)-AVP0(1,8))*6378137*cos(AVP0(1,8)));
     xlabel('\it t \rm / s');
-    ylabel('\it 纬度 \rm / \circ');
-    title('位置-纬度');
+    ylabel('\it 东向 \rm / m');
+    title('位置-东向');
     
     subplot(3,3,2);
-    plot(AVP0(:,1),AVP0(:,9).*temp);
+    plot(AVP0(:,1),(AVP0(:,9)-AVP0(1,9))*6378137);
     xlabel('\it t \rm / s');
-    ylabel('\it 经度 \rm / \circ');
-    title('位置-经度');
+    ylabel('\it 北向 \rm / m');
+    title('位置-北向');
     
     subplot(3,3,3);
     plot(AVP0(:,1),AVP0(:,10));
@@ -225,38 +225,38 @@ function Plot_AVP_XkPk_Group(AVP0,XkPk)
 	subplot(2,3,1);
     plot(XkPk(:,1),XkPk(:,14));
     xlabel('\it t \rm / s');
-    ylabel('\it X acc \rm / \circ/h');
-    title('Xk加计零偏_X');
+    ylabel('\it X acc \rm / m/s');
+    title('Xk加计零偏 X');
     
     subplot(2,3,2);
     plot(XkPk(:,1),XkPk(:,15));
     xlabel('\it t \rm / s');
-    ylabel('\it Y acc \rm / \circ/h');
-    title('Xk加计零偏_Y');
+    ylabel('\it Y acc \rm / m/s');
+    title('Xk加计零偏 Y');
     
     subplot(2,3,3);
     plot(XkPk(:,1),XkPk(:,16));
     xlabel('\it t \rm / s');
-    ylabel('\it Z acc \rm / \circ/h');
-    title('Xk加计零偏_Z');   
+    ylabel('\it Z acc \rm / m/s');
+    title('Xk加计零偏 Z');   
     
     subplot(2,3,4);
     plot(XkPk(:,1),XkPk(:,29));
     xlabel('\it t \rm / s');
     %ylabel('\it 纬度 \rm / \circ');
-    title('Pk加计零偏_X');
+    title('Pk加计零偏 X');
     
     subplot(2,3,5);
     plot(XkPk(:,1),XkPk(:,30));
     xlabel('\it t \rm / s');
     %ylabel('\it 经度 \rm / \circ');
-    title('Pk加计零偏_Y');
+    title('Pk加计零偏 Y');
     
     subplot(2,3,6);
     plot(XkPk(:,1),XkPk(:,31));
     xlabel('\it t \rm / s');
     %ylabel('\it 高程 \rm / m');
-    title('Pk加计零偏_Z');           
+    title('Pk加计零偏 Z');           
       
 %% 绘制以起点为出发点的行驶轨迹
     figure;

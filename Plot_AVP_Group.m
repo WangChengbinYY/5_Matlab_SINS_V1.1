@@ -54,16 +54,16 @@ if nargin == 1
     figure;
     set(gcf,'position',[250,250,1200,240]);
     subplot(1,3,1);
-    plot(AVP0(:,1),AVP0(:,8).*(180/pi));
+    plot(AVP0(:,1),(AVP0(:,8)-AVP0(1,8))*6378137*cos(AVP0(1,8)));
     xlabel('\it t \rm / s');
-    ylabel('\it 纬度 \rm / \circ');
-    title('位置-纬度');
+    ylabel('\it 东向 \rm / m');
+    title('位置-东向');
     
     subplot(1,3,2);
-    plot(AVP0(:,1),AVP0(:,9).*(180/pi));
+    plot(AVP0(:,1),(AVP0(:,9)-AVP0(1,9))*6378137);
     xlabel('\it t \rm / s');
-    ylabel('\it 经度 \rm / \circ');
-    title('位置-经度');
+    ylabel('\it 北向 \rm / m');
+    title('位置-北向');
     
     subplot(1,3,3);
     plot(AVP0(:,1),AVP0(:,10));
@@ -82,7 +82,7 @@ if nargin == 1
     %绘制以起点为出发点的行驶轨迹
     subplot(1,2,2);
     plot(0, 0, 'rp');     %在起始位置画一个 五角星
-    legend(sprintf('%.6f, %.6f / 度', AVP0(1,8)*180/pi,AVP0(1,9)*180/pi));
+    %legend(sprintf('%.6f, %.6f / 度', AVP0(1,8)*180/pi,AVP0(1,9)*180/pi));
     hold on;    
     plot((AVP0(:,8)-AVP0(1,8))*6378137*cos(AVP0(1,8)), (AVP0(:,9)-AVP0(1,9))*6378137);
     xlabel('\it 东向 \rm / m');
@@ -152,20 +152,20 @@ if nargin == 2
     figure;
     set(gcf,'position',[250,250,1200,480]);
     subplot(1,3,1);
-    plot(AVP0(:,1),AVP0(:,8).*(180/pi),'r');
+    plot(AVP0(:,1),(AVP0(:,8)-AVP0(1,8))*6378137*cos(AVP0(1,8)),'r');
     hold on;
-    plot(AVP1(:,1),AVP1(:,8).*(180/pi));
+    plot(AVP1(:,1),(AVP1(:,8)-AVP1(1,8))*6378137*cos(AVP1(1,8)));
     xlabel('\it t \rm / s');
-    ylabel('\it 纬度 \rm / \circ');
-    title('位置-纬度');
+    ylabel('\it 东向 \rm / m');
+    title('位置-东向');
     
     subplot(1,3,2);
-    plot(AVP0(:,1),AVP0(:,9).*(180/pi),'r');
+    plot(AVP0(:,1),(AVP0(:,9)-AVP0(1,9))*6378137,'r');
     hold on;
-    plot(AVP1(:,1),AVP1(:,9).*(180/pi));
+    plot(AVP1(:,1),(AVP1(:,9)-AVP1(1,9))*6378137);
     xlabel('\it t \rm / s');
-    ylabel('\it 经度 \rm / \circ');
-    title('位置-经度');
+    ylabel('\it 北向 \rm / m');
+    title('位置-北向');
     
     subplot(1,3,3);
     plot(AVP0(:,1),AVP0(:,10),'r');
@@ -188,7 +188,7 @@ if nargin == 2
     %绘制以起点为出发点的行驶轨迹
     subplot(1,2,2);
     plot(0, 0, 'rp');     %在起始位置画一个 五角星
-    legend(sprintf('%.6f, %.6f / 度', AVP0(1,8)*180/pi,AVP0(1,9)*180/pi));
+    %legend(sprintf('%.6f, %.6f / 度', AVP0(1,8)*180/pi,AVP0(1,9)*180/pi));
     hold on;    
     plot((AVP0(:,9)-AVP0(1,9))*6378137*cos(AVP0(1,8)), (AVP0(:,8)-AVP0(1,8))*6378137,'r');
     hold on;

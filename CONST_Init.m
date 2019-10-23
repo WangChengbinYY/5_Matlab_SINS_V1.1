@@ -17,5 +17,6 @@ function G_Const = CONST_Init()
     G_Const.earth_Re    = 6378137;                      %单位：m
     G_Const.earth_e     = 0.081819221455524;    
     G_Const.earth_g0    = 9.7803267714;                 %单位：m/s2
+    %G_Const.earth_g0    = 9.7553; 
     
         

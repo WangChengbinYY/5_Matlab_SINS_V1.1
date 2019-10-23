@@ -1,7 +1,7 @@
 function [Ft,Gt] = KF_Update_Ft(mode,InsData)
 % 根据当前时刻的INS数据，进行Ft的计算更新
 
-if(mode == 1)
+if((mode == 1)||(mode == 2)||(mode == 3)||(mode == 4)||(mode == 5))
     lat = InsData.pos(1,1);     %纬度
     tan_lat = tan(lat); sec_lat = sec(lat);
     Rmh = InsData.Rmh;
@@ -47,3 +47,5 @@ if(mode == 1)
         Gt(1:3,1:3)=-InsData.C_b_n;
         Gt(4:6,4:6)=InsData.C_b_n;
 end
+
+

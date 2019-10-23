@@ -5,7 +5,7 @@ function [Fk,Rk,Phikk_1,Qk_1] = KF_Update_C2D(mode,KF,Ts,n)
 
 
 
-if mode == 1
+if((mode == 1)||(mode == 2)||(mode == 3)||(mode == 4)||(mode == 5))
     if n == 1
         Fk = KF.Ft;
         Phikk_1 = eye(size(KF.Ft)) + Fk*Ts;
@@ -35,19 +35,5 @@ if mode == 1
     end
     
 end
-%     
-%     
-%     
-%     if n > 1
-%         Tsi = Ts; facti = 1; Fti = Fk; Mi = KF.Gt*KF.qt*KF.Gt';
-%         for i=2:1:n
-%             Tsi = Tsi*Ts;        
-%             facti = facti*i;
-%             Fti = Fti*Fk;
-%             Phikk_1 = Phikk_1 + Tsi/facti*Fti;  % Phikk_1
-%             FkMi = Fk*Mi;
-%             Mi = FkMi + FkMi';
-%             Qk_1 = Qk_1 + Tsi/facti*Mi;  % Qk        
-%         end
-%     end
-% end
+
+
