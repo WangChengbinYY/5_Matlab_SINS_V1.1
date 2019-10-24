@@ -1,7 +1,15 @@
+
 Vel = zeros(L,2);
 for i=1:L
-    Vel(i,1) = Data_IMU_R(i,1);
-    Vel(i,2) = sqrt(Data_IMU_R(i,2)^2+Data_IMU_R(i,3)^2+Data_IMU_R(i,4)^2);
+    Vel(i,1) = Data_IMU(i,1);
+    Vel(i,2) = sqrt(Data_IMU(i,2)^2+Data_IMU(i,3)^2+Data_IMU(i,4)^2);
+end
+%%求加速度矢量和
+L=length(IMUGPS5IMUB);
+Vel = zeros(L,2);
+for i=1:L
+    Vel(i,1) = IMUGPS5IMUB(i,1);
+    Vel(i,2) = sqrt(IMUGPS5IMUB(i,3)^2+IMUGPS5IMUB(i,4)^2+IMUGPS5IMUB(i,5)^2);
 end
 
 m = fix(L/80);
@@ -79,6 +87,19 @@ figure;plot(Data_Foot_R_StateTime(:,2),'r');
 hold on;plot(Data_IMU_R(:,5));
 
 
+
+
+
+figure;plot(Data_IMU_R(:,1),Data_IMU_R(:,4));
+hold on;plot(Data_Foot_R_StateTime(:,1),Data_Foot_R_StateTime(:,2)*9.78,'-.r');
+
+%% 绘制GPS轨迹图
+figure;
+plot(Origion_GPS_L(:,3),Origion_GPS_L(:,4),'r*');
+hold on;plot(Origion_GPS_R(:,3),Origion_GPS_R(:,4),'*');
+
+%% 压力传感器判断静态和加速度计矢量和的比较
+L=length(Data_IMU_R);
 F_vel = zeros(L,2);
 for i=1:L
   F_vel(i,1) = Data_IMU_R(i,1);
@@ -86,9 +107,5 @@ for i=1:L
 end
 figure;plot(Data_Foot_R_StateTime(:,1),Data_Foot_R_StateTime(:,2)*9.78,'r');
 hold on;plot(F_vel(:,1),F_vel(:,2));
-
-
-figure;plot(Data_IMU_R(:,1),Data_IMU_R(:,4));
-hold on;plot(Data_Foot_R_StateTime(:,1),Data_Foot_R_StateTime(:,2)*9.78,'-.r');
 
 
