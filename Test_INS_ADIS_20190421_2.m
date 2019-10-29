@@ -100,8 +100,7 @@
 %                 [INSData_Now.att(1,1),INSData_Now.att(2,1)]=Att_Accel2Att(Temp_fb(1,1),Temp_fb(2,1),Temp_fb(3,1));            
 %                 INSData_Now.C_b_n = Att_Euler2DCM(INSData_Now.att);  
 %                 INSData_Now.Q_b_n = Att_DCM2Q(INSData_Now.C_b_n);
-%                 Result_AVP(i,2:4) = INSData_Now.att';
-                
+%                 Result_AVP(i,2:4) = INSData_Now.att';                
                 INSData_Now.vel = G_Start_Vel;
                 Result_AVP(i,5:7) = INSData_Now.vel';
             end
