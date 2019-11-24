@@ -192,9 +192,12 @@ if nargin == 2
     plot(0, 0, 'rp');     %在起始位置画一个 五角星
     %legend(sprintf('%.6f, %.6f / 度', AVP0(1,8)*180/pi,AVP0(1,9)*180/pi));
     hold on;    
-    plot((AVP0(:,9)-AVP0(1,9))*Rnh, (AVP0(:,8)-AVP0(1,8))*Rmh*cos(AVP0(1,8)),'r');
+    plot((AVP0(:,9)-AVP0(1,9))*Rnh,(AVP0(:,8)-AVP0(1,8))*Rmh*cos(AVP0(1,8)),'r');
     hold on;
-    plot((AVP1(:,9)-AVP1(1,9))*Rnh), (AVP1(:,8)-AVP1(1,8))*Rmh*cos(AVP1(1,8));
+    plot((AVP1(:,9)-AVP1(1,9))*Rnh,(AVP1(:,8)-AVP1(1,8))*Rmh*cos(AVP1(1,8)));
     xlabel('\it 东向 \rm / m');
     ylabel('\it 北向 \rm / m');
-    title('行驶路线');end
+    title('行驶路线');
+end
+
+
