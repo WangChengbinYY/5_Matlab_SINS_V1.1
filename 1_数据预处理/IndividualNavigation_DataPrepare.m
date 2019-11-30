@@ -22,7 +22,7 @@ function varargout = IndividualNavigation_DataPrepare(varargin)
 
 % Edit the above text to modify the response to help IndividualNavigation_DataPrepare
 
-% Last Modified by GUIDE v2.5 28-Nov-2019 22:59:01
+% Last Modified by GUIDE v2.5 30-Nov-2019 18:41:56
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -72,6 +72,10 @@ Choose_DataKinde = 1;
 %选择左脚或右脚数据 1:左脚(含UWB)(默认) 2:左脚(不含UWB) 3:右脚(不含UWB)
 global Choose_Foot_LeftorRight
 Choose_Foot_LeftorRight = 1;
+%是否包含脚底压力传感器 1:不包含(默认) 2:包含
+global Choose_FootPressure
+Choose_FootPressure = 1;
+
 %选择时间同步输入 1:内部时钟(默认)(从0秒开始计时) 2:内部GPS时间(从有效定位UTC时间天内秒开始)
 global Choose_Time
 Choose_Time = 1;
@@ -82,9 +86,11 @@ global Choose_HighGPSData
 Choose_HighGPSData = 0;
 %外部高精度定位数据(北斗伴侣) 待处理数据文件名 文件路径 
 global GPS_FilePath GPS_FileName 
-
-
-
+%预处理完成后，存放的路径及名称
+global tDataSavePath
+%时间截取的 起始和结束时间 单位S
+global Time_Start Time_End
+Time_Start = 0.0;   Time_End = 0.0;
 % UIWAIT makes IndividualNavigation_DataPrepare wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
@@ -113,9 +119,8 @@ function pushbutton1_Callback(hObject, eventdata, handles)
 global IMU_FileName IMU_FilePath 
 [IMU_FileName,IMU_FilePath] = uigetfile('*.dat');
 if isequal(IMU_FileName,0)
-   disp('选择文件取消!');
-else
-   disp(['选取文件:', fullfile(IMU_FilePath,IMU_FileName)]);
+   
+else  
    set(handles.edit1,'string',strcat(IMU_FilePath,IMU_FileName));
 end
 
@@ -143,17 +148,238 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-%------------------------ 读取IMU相关的所有数据-----------------------------
+%------------------------ 读取IMU 及 外部 相关的所有数据-----------------------------
 % --- Executes on button press in pushbutton2.
 function pushbutton2_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton2 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+% 0. 全局变量声明
+global IMU_FilePath IMU_FileName Choose_Device Choose_DataKinde Choose_Time
+global Choose_Foot_LeftorRight Choose_FootPressure tDataSavePath
+if isempty(IMU_FilePath) == 1
+    disp('******未设置IMU数据路径！******');
+    return;
+end
+
+% 1. 获取文件路径
+tIndex = strfind(IMU_FileName,'.');
+tName = IMU_FileName(1:tIndex-1);  %预处理后数据mat 存储的名称
+tPath = [IMU_FilePath,tName];
+tDataSavePath = [IMU_FilePath,tName,'.mat'];
+
+% 2. 根据参数的设定，读取模块对应的数据
+%% (2.1) *---------------------单独使用 First IMUB_MPU--------------------------*
+if Choose_Device == 1 && Choose_DataKinde == 2  
+    disp('----------------------------------------------------');
+    disp('*--------------First IMUB_MPU 读取数据--------------*');
+    %（A）读取并存储IMU数据，也是存储变量新建(覆盖)
+    Path_IMU = [tPath,'_UB_IMU_MPU.txt'];  %包含磁强计 
+    Temp = load(Path_IMU);
+    if isempty(Temp) == 1
+        disp('1.*****IMU数据为空*****');
+        return;
+    else
+        L = length(Temp)-1;    %陀螺单位是度/s  加计 m/s2 磁强计 uT
+        IMU = zeros(L,8);       %最后一列带时间标
+        IMU(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
+        IMU(1:L,2:4) = Temp(1:L,3:5);
+        IMU(1:L,5:7) = Temp(1:L,6:8)./(180.0/pi);   
+        IMU(1:L,8) = Temp(1:L,13);
+        save(tDataSavePath,'IMU');
+        disp('1. IMU数据存储成功！');
+    end
+    %（B）存储磁强计数据 从IMU中拆分
+    Magnetic = zeros(fix(L/2),5);
+    for i=1:fix(L/2)
+        Magnetic(i,1) = IMU(1+(i-1)*2,1); %时间
+        Magnetic(i,2:4) = Temp(1+(i-1)*2,9:11);
+        Magnetic(i,5) = Temp(1+(i-1)*2,13);
+    end 
+    save(tDataSavePath,'Magnetic','-append');
+    disp('2. Magnetic数据存储成功！');        
+    %（C）存储压力传感器数据
+    if Choose_FootPressure == 1
+        Path_FootPres = [tPath,'_FootPressure.txt'];  
+        Temp = load(Path_FootPres);
+        if isempty(Temp) == 1
+            disp('3.*****FootPress数据读取失败******');
+        else
+            L = length(Temp)-1;
+            FootPres = zeros(L,6);
+            FootPres(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
+            FootPres(1:L,2:5) = Temp(1:L,3:6);
+            FootPres(1:L,6) = Temp(1:L,7);
+            %增加 利用压力判断脚步状态的函数
+            save(tDataSavePath,'FootPres','-append');
+            disp('3. FootPress数据存储成功！');
+        end            
+    end
+    %（E）存储UWB数据
+    if Choose_Foot_LeftorRight == 1       %左脚含UWB数据
+        Path_UWB = [tPath,'_UWB.txt'];  
+        Temp = load(Path_UWB);
+        if isempty(Temp) == 1
+            disp('4.******UWB数据读取失败******');
+        else
+            L = length(Temp)-1;
+            UWB = zeros(L,3);
+            UWB(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
+            UWB(1:L,2) = Temp(1:L,3);
+            UWB(1:L,3) = Temp(1:L,4);
+            %增加低通滤波的处理。。。。。。。
+            save(tDataSavePath,'UWB','-append');
+            disp('4. UWB数据存储成功！');
+        end              
+    end
+    %（F）存储GPS数据    
+   if Choose_Time == 1       %使用GPS时间，意味着有GPS数据
+        Path_GPS = [tPath,'_GPS.txt'];  
+        Temp = load(Path_GPS);
+        if isempty(Temp) == 1
+            disp('5.******GPS数据读取失败******');
+        else
+            L = length(Temp);
+            GPS = zeros(L,2);
+            GPS(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
+            GPS(1:L,2) = Temp(1:L,3);
+            %增加低通滤波的处理。。。。。。。
+            save(tDataSavePath,'UWB','-append');
+            disp('5. UWB数据存储成功！');
+        end              
+    end        
+    disp('*-----------First IMUB_MPU 数据读取完成！------------*');
+    disp('*****************************************************');
+end
+    
+    
+%% (2.2) *---------------------主用Third IMUB_ADIS + IMUA_Magnetic--------------*
+if Choose_Device == 3 && Choose_DataKinde == 5  
+    disp('----------------------------------------------------');
+    disp('*-------Third IMUB_ADIS + IMUA_Magnetic 数据读取----*');    
+    %（A）读取并存储IMUB_ADIS数据，也是存储变量新建(覆盖)
+    Path_IMU = [tPath,'_UB_IMU_ADIS.txt']; 
+    Temp = load(Path_IMU);
+    if isempty(Temp) == 1
+        disp('1.******IMU数据为空******');
+        return;
+    else
+        L = length(Temp)-1;    %陀螺单位是度/s  加计 m/s2 磁强计 uT
+        IMU = zeros(L,8);
+        IMU(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
+        IMU(1:L,2:4) = Temp(1:L,3:5);
+        IMU(1:L,5:7) = Temp(1:L,6:8)./(180.0/pi);  
+        IMU(1:L,8) = Temp(1:L,11);
+        save(tDataSavePath,'IMU');
+        disp('1. IMU数据存储成功！');
+    end
+    %（B）读取IMUA_MPU的磁强计数据 并存储
+    Path_Magnetic = [tPath,'_UA_Magnetic_MPU.txt']; 
+    Temp = load(Path_Magnetic);
+    if isempty(Temp) == 1
+        disp('2.******磁强计数据读取失败！******');
+        return;
+    else
+        L = length(Temp)-1;    %陀螺单位是度/s  加计 m/s2 磁强计 uT
+        Magnetic = zeros(L,5);
+        Magnetic(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
+        Magnetic(1:L,2:5) = Temp(1:L,3:6);
+        save(tDataSavePath,'Magnetic','-append');
+        disp('2. Magnetic数据存储成功！'); 
+    end    
+    %（C）存储压力传感器数据
+    if Choose_FootPressure == 1
+        Path_FootPres = [tPath,'_FootPressure.txt'];  
+        Temp = load(Path_FootPres);
+        if isempty(Temp) == 1
+            disp('3.******FootPress数据读取失败******');
+        else
+            L = length(Temp)-1;
+            FootPres = zeros(L,6);
+            FootPres(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
+            FootPres(1:L,2:5) = Temp(1:L,3:6);
+            FootPres(1:L,6) = Temp(1:L,7);
+            %增加 利用压力判断脚步状态的函数
+            save(tDataSavePath,'FootPres','-append');
+            disp('3. FootPress数据存储成功！');
+        end            
+    end
+    %（E）存储UWB数据
+    if Choose_Foot_LeftorRight == 1       %左脚含UWB数据
+        Path_UWB = [tPath,'_UWB.txt'];  
+        Temp = load(Path_UWB);
+        if isempty(Temp) == 1
+            disp('4.******UWB数据读取失败******');
+        else
+            L = length(Temp)-1;
+            UWB = zeros(L,3);
+            UWB(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
+            UWB(1:L,2) = Temp(1:L,3);
+            UWB(1:L,3) = Temp(1:L,4);
+            %增加低通滤波的处理。。。。。。。
+            save(tDataSavePath,'UWB','-append');
+            disp('4. UWB数据存储成功！');
+        end              
+    end
+    %（F）存储GPS数据    
+   if Choose_Time == 1       %使用GPS时间，意味着有GPS数据
+        Path_GPS = [tPath,'_GPS.txt'];  
+        GPS = load(Path_GPS);
+        if isempty(GPS) == 1
+            disp('5.******GPS数据读取失败******');
+        else
+            save(tDataSavePath,'GPS','-append');
+            disp('5. GPS数据存储成功！');
+        end              
+    end        
+    disp('*------Third IMUB_ADIS + IMUA_Magnetic 读取完成-----*！');
+    disp('*****************************************************');
+end    
 
 
-
-
-
+%% 3. 读取外部北斗伴侣的高精度GPS数据
+%外部高精度定位数据(北斗伴侣) 0:无 1:有  
+%   txt数据格式为 hhmmss.sss ddmm.mmmmmmm dddmm.mmmmmmm 水平精度(米) 高程(米)
+%   整理输出为: 天内秒 纬度 经度 高程 水平精度
+global Choose_HighGPSData
+%外部高精度定位数据(北斗伴侣) 待处理数据文件名 文件路径 
+global GPS_FilePath GPS_FileName 
+if Choose_HighGPSData == 1
+    disp('----------------------------------------------------');
+    disp('*-----------读取外部高精度定位数据(北斗伴侣)--------*！');    
+    Path_HighGPS = [GPS_FilePath,GPS_FileName];  
+    Temp = load(Path_HighGPS);
+    if isempty(Temp) == 1
+        disp('1.******High GPS数据读取失败******');
+    else 
+        L = length(Temp);
+        HighGPS = zeros(L,6);
+        for i=1:L
+            %时间计算
+            Second = fix(mod(Temp(i,1),100));   %有的时候北斗伴侣输出是带ms了
+            Minute = fix(fix(mod(Temp(i,1),10000))/100);
+            Hour = fix(Temp(i,1)/10000);
+            HighGPS(i,1) = Hour*3600+Minute*60+Second;
+            %纬度计算
+            Degree = fix(Temp(i,2)/100);
+            DMinute = mod(Temp(i,2),100);
+            HighGPS(i,2) = Degree+DMinute/60.0;
+            %经度计算
+            Degree = fix(Temp(i,3)/100);
+            DMinute = mod(Temp(i,3),100);
+            HighGPS(i,3) = Degree+DMinute/60.0;
+            %高程
+            HighGPS(i,4) = Temp(i,6);
+            %水平定位精度
+            HighGPS(i,5) = Temp(i,5);
+            %定位模式 0 无效 1单点 4RTK浮点 5RTK固定 6惯导
+            HighGPS(i,6) = Temp(i,4);
+        end
+        save(tDataSavePath,'HighGPS','-append');
+    end        
+    disp('*-----------外部高精度定位数据(北斗伴侣)完成--------*！');  
+    disp('****************************************************');
+end
 
 
 % --- Executes when selected object is changed in uibuttongroup1.
@@ -167,13 +393,10 @@ str = get(hObject,'tag');
 switch str
     case 'radiobutton1'
         Choose_Device = 1;
-        disp('设备类型选择：First(MPU)');
     case 'radiobutton2'
-        Choose_Device = 2;
-        disp('设备类型选择：Second(MTi)');       
+        Choose_Device = 2;     
     case 'radiobutton3'
         Choose_Device = 3;
-        disp('设备类型选择：Third(ADIS)');
 end
 
 
@@ -189,22 +412,16 @@ str = get(hObject,'tag');
 switch str
     case 'radiobutton4'
         Choose_DataKinde = 1;
-        disp('选择数据类型：IMUA(MPU_Only)');
     case 'radiobutton5'
-        Choose_DataKinde = 2;
-        disp('选择数据类型：IMUB(MPU_Only)');       
+        Choose_DataKinde = 2;    
     case 'radiobutton6'
         Choose_DataKinde = 3;
-        disp('选择数据类型：IMUB(MTi_Only)');
     case 'radiobutton7'
         Choose_DataKinde = 4;
-        disp('选择数据类型：IMUB(ADIS_Only)');     
     case 'radiobutton8'
-        Choose_DataKinde = 5;
-        disp('选择数据类型：IMUB(ADIS)+IMUA(MPU_Magnetic)'); 
+        Choose_DataKinde = 5; 
     case 'radiobutton9'
-        Choose_DataKinde = 6;
-        disp('选择数据类型：IMUB(MPU)+IMUA(MPU)');         
+        Choose_DataKinde = 6;    
 end
 
 
@@ -219,22 +436,37 @@ str = get(hObject,'tag');
 switch str
     case 'radiobutton10'
         Choose_Foot_LeftorRight = 1;
-        disp('设备绑定模式：左脚(含UWB)');
     case 'radiobutton11'
-        Choose_Foot_LeftorRight = 2;
-        disp('设备绑定模式：左脚(不含UWB)');       
+        Choose_Foot_LeftorRight = 2;  
     case 'radiobutton12'
         Choose_Foot_LeftorRight = 3;
-        disp('设备绑定模式：右脚(不含UWB)');    
 end
-
 
 % --- Executes on button press in pushbutton3.
 function pushbutton3_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton3 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+%选择时间同步输入 1:内部时钟(默认)(从0秒开始计时) 2:内部GPS时间(从有效定位UTC时间天内秒开始)
+%% 0. 先获取需要截取时间段的 起始和结束 时间
+global Time_Start Time_End tDataSavePath
+Time_Start = str2double(get(handles.edit2,'String'));
+Time_End = str2double(get(handles.edit4,'String'));
+global Choose_Time
+disp('----------------------------------------------------');
+disp('*------------------开始时间同步处理-----------------*');
+%% 1. 使用内部时钟
+if Choose_Time == 1          
+    DataPrepare_IMUData_TimeAlignmentSelf(tDataSavePath,200,100,Time_Start,Time_End);   
+    disp('*-----------使用内部时钟，处理完成！-------*');    
+end
 
+%% 2. 使用GPS时钟同步
+if Choose_Time == 2
+
+    disp('*----------------使用GPS时钟同步完成！--------------*');
+    disp('****************************************************');
+end
 
 % --- Executes on button press in pushbutton4.
 function pushbutton4_Callback(hObject, eventdata, handles)
@@ -242,6 +474,10 @@ function pushbutton4_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+%% 1. 利用压力传感器和IMU数据进行脚步状态判断
+
+
+%% 2. UWB 的数据低通滤波  还可以考虑 磁强计的数据低通滤波
 
 
 function edit2_Callback(hObject, eventdata, handles)
@@ -277,10 +513,8 @@ str = get(hObject,'tag');
 switch str
     case 'radiobutton13'
         Choose_Time = 1;
-        disp('时钟选择：内部时钟');
     case 'radiobutton14'
         Choose_Time = 2;
-        disp('时钟选择：内部GPS天内秒');     
 end
 
 
@@ -304,11 +538,9 @@ else
     if isequal(GPS_FileName,0)
        set(hObject,'Value',0);
        Choose_HighGPSData = 0;
-       disp('选择文件取消!');
     else
        Choose_HighGPSData = 1;
        set(hObject,'Value',1);
-       disp(['选取文件:', fullfile(GPS_FilePath,GPS_FileName)]);
        set(handles.edit3,'string',strcat(GPS_FilePath,GPS_FileName));
     end
 end
@@ -346,3 +578,45 @@ clear global IMU_FilePath IMU_FileName Choose_Device Choose_DataKinde
 clear global Choose_Foot_LeftorRight Choose_Time Choose_HighGPSData
 clear global GPS_FilePath GPS_FileName 
 disp('*--------程序退出！-------*');
+
+
+% --- Executes when selected object is changed in uibuttongroup7.
+function uibuttongroup7_SelectionChangedFcn(hObject, eventdata, handles)
+% hObject    handle to the selected object in uibuttongroup7 
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+%是否包含脚底压力传感器 1:不包含(默认) 2:包含
+global Choose_FootPressure
+str = get(hObject,'tag');
+switch str
+    case 'radiobutton16'
+        Choose_FootPressure = 1;
+    case 'radiobutton17'
+        Choose_FootPressure = 2;
+end
+
+
+
+
+
+
+function edit4_Callback(hObject, eventdata, handles)
+% hObject    handle to edit4 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit4 as text
+%        str2double(get(hObject,'String')) returns contents of edit4 as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function edit4_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit4 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
