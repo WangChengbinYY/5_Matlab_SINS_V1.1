@@ -60,7 +60,8 @@ guidata(hObject, handles);
 
 %===========================全局变量设定=====================================
 %IMU 待处理数据文件名 文件路径 
-global IMU_FilePath IMU_FileName 
+global IMU_FilePath IMU_FileName
+IMU_FilePath = []; IMU_FileName = [];
 %选择的设备种类 1:First(MPU)(默认) 2:Second(MTi) 3:Third(ADIS) 
 global Choose_Device
 Choose_Device = 1;
@@ -86,14 +87,17 @@ global Choose_HighGPSData
 Choose_HighGPSData = 0;
 %外部高精度定位数据(北斗伴侣) 待处理数据文件名 文件路径 
 global GPS_FilePath GPS_FileName 
+GPS_FilePath = [];  GPS_FileName = [];
 %预处理完成后，存放的路径及名称
-global tDataSavePath
+global tDataSavePath tPath
+tDataSavePath = []; tPath = [];
 %时间截取的 起始和结束时间 单位S
 global Time_Start Time_End
 Time_Start = 0.0;   Time_End = 0.0;
 % UIWAIT makes IndividualNavigation_DataPrepare wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
+disp('*/\/\/\/\/\/\/\/\/\/\程序启动/\/\/\/\/\/\/\/\/\/\*');
 
 % --- Outputs from this function are returned to the command line.
 function varargout = IndividualNavigation_DataPrepare_OutputFcn(hObject, eventdata, handles) 
@@ -116,12 +120,17 @@ function pushbutton1_Callback(hObject, eventdata, handles)
 % global IMU_FilePath;  %待处理数据文件路径
 % [IMU_FileName,IMU_FilePath] = uigetfile("*.dat","选择要预处理的原始数据");
 
-global IMU_FileName IMU_FilePath 
+global IMU_FileName IMU_FilePath tDataSavePath tPath
 [IMU_FileName,IMU_FilePath] = uigetfile('*.dat');
 if isequal(IMU_FileName,0)
    
 else  
    set(handles.edit1,'string',strcat(IMU_FilePath,IMU_FileName));
+   % 1. 获取文件路径
+    tIndex = strfind(IMU_FileName,'.');
+    tName = IMU_FileName(1:tIndex-1);  %预处理后数据mat 存储的名称
+    tPath = [IMU_FilePath,tName];
+    tDataSavePath = [IMU_FilePath,tName,'.mat'];
 end
 
 
@@ -156,231 +165,151 @@ function pushbutton2_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 % 0. 全局变量声明
 global IMU_FilePath IMU_FileName Choose_Device Choose_DataKinde Choose_Time
-global Choose_Foot_LeftorRight Choose_FootPressure tDataSavePath
-if isempty(IMU_FilePath) == 1
-    disp('******未设置IMU数据路径！******');
+global Choose_Foot_LeftorRight Choose_FootPressure tDataSavePath tPath
+
+if isempty(tDataSavePath) == 1
+    disp('警告：****未设置保存数据路径，请点击打开按钮！*****');
     return;
 end
 
-% 1. 获取文件路径
-tIndex = strfind(IMU_FileName,'.');
-tName = IMU_FileName(1:tIndex-1);  %预处理后数据mat 存储的名称
-tPath = [IMU_FilePath,tName];
-tDataSavePath = [IMU_FilePath,tName,'.mat'];
-
-% 2. 根据参数的设定，读取模块对应的数据
-%% (2.1) *---------------------单独使用 First IMUB_MPU--------------------------*
-if Choose_Device == 1 && Choose_DataKinde == 2  
-    disp('----------------------------------------------------');
-    disp('*--------------First IMUB_MPU 读取数据--------------*');
-    %（A）读取并存储IMU数据，也是存储变量新建(覆盖)
-    Path_IMU = [tPath,'_UB_IMU_MPU.txt'];  %包含磁强计 
-    Temp = load(Path_IMU);
-    if isempty(Temp) == 1
-        disp('1.*****IMU数据为空*****');
-        return;
-    else
-        L = length(Temp)-1;    %陀螺单位是度/s  加计 m/s2 磁强计 uT
-        IMU = zeros(L,8);       %最后一列带时间标
-        IMU(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
-        IMU(1:L,2:4) = Temp(1:L,3:5);
-        IMU(1:L,5:7) = Temp(1:L,6:8)./(180.0/pi);   
-        IMU(1:L,8) = Temp(1:L,13);
-        save(tDataSavePath,'IMU');
-        disp('1. IMU数据存储成功！');
+disp('*****************************************************');
+disp('*-------------------数据读取开始---------------------*');
+%% 1. 读取IMU相关数据
+if isempty(IMU_FilePath) == 1
+    disp('警告：******未设置IMU数据路径！******');
+else
+%根据参数的设定，读取模块对应的数据
+%   不同模块的使用，仅在 IMU 和 Magnetic 上的有区别
+    %% 1.1 IMU 和 Magnetic 在一起的情况
+    % 第一种情况：First IMUB_MPU_Only 
+    if Choose_Device == 1 && Choose_DataKinde == 1  
+        Path_IMU = [tPath,'_UB_IMU_MPU.txt'];  %包含磁强计 
+        [IMU,Magnetic] = DataPrepare_LoadData_IMU_Include_Magnetic(Path_IMU);
+        if isempty(IMU) == 1 
+            disp('1.*****IMU数据为空*****');
+        else
+            save(tDataSavePath,'IMU');                  %存储
+            disp('1. IMU数据存储成功！');
+            DataPrepare_PlotData_Original(IMU,1);       %绘制
+            save(tDataSavePath,'Magnetic','-append');   %存储
+            disp('2. Magnetic数据存储成功！');              
+            DataPrepare_PlotData_Original(Magnetic,2);  %绘制
+        end
     end
-    %（B）存储磁强计数据 从IMU中拆分
-    Magnetic = zeros(fix(L/2),5);
-    for i=1:fix(L/2)
-        Magnetic(i,1) = IMU(1+(i-1)*2,1); %时间
-        Magnetic(i,2:4) = Temp(1+(i-1)*2,9:11);
-        Magnetic(i,5) = Temp(1+(i-1)*2,13);
-    end 
-    save(tDataSavePath,'Magnetic','-append');
-    disp('2. Magnetic数据存储成功！');        
-    %（C）存储压力传感器数据
+    % 第二种情况：Third IMUB_ADIS + IMUA_MPU_Magnetic
+    if Choose_Device == 3 && Choose_DataKinde == 5 
+        Path_IMU = [tPath,'_UB_IMU_ADIS.txt']; 
+        IMU = DataPrepare_LoadData_IMU_Only(Path_IMU);
+        if isempty(IMU) == 1 
+            disp('1.*****IMU数据为空*****');
+        else
+            save(tDataSavePath,'IMU');                  %存储
+            disp('1. IMU数据存储成功！');
+            DataPrepare_PlotData_Original(IMU,1);       %绘制
+        end
+        %读取IMUA_MPU的磁强计数据 并存储
+        Path_Magnetic = [tPath,'_UA_Magnetic_MPU.txt']; 
+        Magnetic = DataPrepare_LoadData_Magnetic_Only(Path_Magnetic);
+        if isempty(Magnetic) == 1
+            disp('2.******磁强计数据读取失败！******');
+        else
+            save(tDataSavePath,'Magnetic','-append');
+            disp('2. Magnetic数据存储成功！'); 
+            DataPrepare_PlotData_Original(Magnetic,2);
+        end        
+    end
+    %% 1.2 读取足底压力数据
     if Choose_FootPressure == 1
         Path_FootPres = [tPath,'_FootPressure.txt'];  
-        Temp = load(Path_FootPres);
-        if isempty(Temp) == 1
+        FootPres = DataPrepare_LoadData_FootPres(Path_FootPres);
+        if isempty(FootPres) == 1
             disp('3.*****FootPress数据读取失败******');
         else
-            L = length(Temp)-1;
-            FootPres = zeros(L,6);
-            FootPres(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
-            FootPres(1:L,2:5) = Temp(1:L,3:6);
-            FootPres(1:L,6) = Temp(1:L,7);
-            %增加 利用压力判断脚步状态的函数
             save(tDataSavePath,'FootPres','-append');
             disp('3. FootPress数据存储成功！');
+            DataPrepare_PlotData_Original(FootPres,3);
         end            
     end
-    %（E）存储UWB数据
+
+    %% 1.3 读取UWB测距数据
     if Choose_Foot_LeftorRight == 1       %左脚含UWB数据
         Path_UWB = [tPath,'_UWB.txt'];  
-        Temp = load(Path_UWB);
-        if isempty(Temp) == 1
-            disp('4.******UWB数据读取失败******');
+        UWB = DataPrepare_LoadData_UWB(Path_UWB);
+        if isempty(UWB) == 1
+            disp('3.*****FootPress数据读取失败******');
         else
-            L = length(Temp)-1;
-            UWB = zeros(L,3);
-            UWB(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
-            UWB(1:L,2) = Temp(1:L,3);
-            UWB(1:L,3) = Temp(1:L,4);
-            %增加低通滤波的处理。。。。。。。
             save(tDataSavePath,'UWB','-append');
             disp('4. UWB数据存储成功！');
+            DataPrepare_PlotData_Original(UWB,4);
         end              
     end
-    %（F）存储GPS数据    
-   if Choose_Time == 1       %使用GPS时间，意味着有GPS数据
-        Path_GPS = [tPath,'_GPS.txt'];  
-        Temp = load(Path_GPS);
-        if isempty(Temp) == 1
-            disp('5.******GPS数据读取失败******');
-        else
-            L = length(Temp);
-            GPS = zeros(L,2);
-            GPS(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
-            GPS(1:L,2) = Temp(1:L,3);
-            %增加低通滤波的处理。。。。。。。
-            save(tDataSavePath,'UWB','-append');
-            disp('5. UWB数据存储成功！');
-        end              
-    end        
-    disp('*-----------First IMUB_MPU 数据读取完成！------------*');
-    disp('*****************************************************');
-end
-    
-    
-%% (2.2) *---------------------主用Third IMUB_ADIS + IMUA_Magnetic--------------*
-if Choose_Device == 3 && Choose_DataKinde == 5  
-    disp('----------------------------------------------------');
-    disp('*-------Third IMUB_ADIS + IMUA_Magnetic 数据读取----*');    
-    %（A）读取并存储IMUB_ADIS数据，也是存储变量新建(覆盖)
-    Path_IMU = [tPath,'_UB_IMU_ADIS.txt']; 
-    Temp = load(Path_IMU);
-    if isempty(Temp) == 1
-        disp('1.******IMU数据为空******');
-        return;
-    else
-        L = length(Temp)-1;    %陀螺单位是度/s  加计 m/s2 磁强计 uT
-        IMU = zeros(L,8);
-        IMU(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
-        IMU(1:L,2:4) = Temp(1:L,3:5);
-        IMU(1:L,5:7) = Temp(1:L,6:8)./(180.0/pi);  
-        IMU(1:L,8) = Temp(1:L,11);
-        save(tDataSavePath,'IMU');
-        disp('1. IMU数据存储成功！');
-    end
-    %（B）读取IMUA_MPU的磁强计数据 并存储
-    Path_Magnetic = [tPath,'_UA_Magnetic_MPU.txt']; 
-    Temp = load(Path_Magnetic);
-    if isempty(Temp) == 1
-        disp('2.******磁强计数据读取失败！******');
-        return;
-    else
-        L = length(Temp)-1;    %陀螺单位是度/s  加计 m/s2 磁强计 uT
-        Magnetic = zeros(L,5);
-        Magnetic(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
-        Magnetic(1:L,2:5) = Temp(1:L,3:6);
-        save(tDataSavePath,'Magnetic','-append');
-        disp('2. Magnetic数据存储成功！'); 
-    end    
-    %（C）存储压力传感器数据
-    if Choose_FootPressure == 1
-        Path_FootPres = [tPath,'_FootPressure.txt'];  
-        Temp = load(Path_FootPres);
-        if isempty(Temp) == 1
-            disp('3.******FootPress数据读取失败******');
-        else
-            L = length(Temp)-1;
-            FootPres = zeros(L,6);
-            FootPres(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
-            FootPres(1:L,2:5) = Temp(1:L,3:6);
-            FootPres(1:L,6) = Temp(1:L,7);
-            %增加 利用压力判断脚步状态的函数
-            save(tDataSavePath,'FootPres','-append');
-            disp('3. FootPress数据存储成功！');
-        end            
-    end
-    %（E）存储UWB数据
-    if Choose_Foot_LeftorRight == 1       %左脚含UWB数据
-        Path_UWB = [tPath,'_UWB.txt'];  
-        Temp = load(Path_UWB);
-        if isempty(Temp) == 1
-            disp('4.******UWB数据读取失败******');
-        else
-            L = length(Temp)-1;
-            UWB = zeros(L,3);
-            UWB(1:L,1) = Temp(1:L,1)+Temp(1:L,2)./1000.0;
-            UWB(1:L,2) = Temp(1:L,3);
-            UWB(1:L,3) = Temp(1:L,4);
-            %增加低通滤波的处理。。。。。。。
-            save(tDataSavePath,'UWB','-append');
-            disp('4. UWB数据存储成功！');
-        end              
-    end
-    %（F）存储GPS数据    
-   if Choose_Time == 1       %使用GPS时间，意味着有GPS数据
+
+    %% 1.4 读取GPS数据
+    if Choose_Time == 2       %使用GPS时间，意味着有GPS数据
         Path_GPS = [tPath,'_GPS.txt'];  
         GPS = load(Path_GPS);
         if isempty(GPS) == 1
             disp('5.******GPS数据读取失败******');
         else
+            %单位转换
+            GPS(:,2:3) = GPS(:,2:3).*(pi/180.0);
             save(tDataSavePath,'GPS','-append');
             disp('5. GPS数据存储成功！');
-        end              
-    end        
-    disp('*------Third IMUB_ADIS + IMUA_Magnetic 读取完成-----*！');
-    disp('*****************************************************');
-end    
-
-
-%% 3. 读取外部北斗伴侣的高精度GPS数据
+            DataPrepare_PlotData_Original(GPS,5);
+        end                
+    end    
+end
+ 
+%% 2. 读取外部北斗伴侣的高精度GPS数据
 %外部高精度定位数据(北斗伴侣) 0:无 1:有  
 %   txt数据格式为 hhmmss.sss ddmm.mmmmmmm dddmm.mmmmmmm 水平精度(米) 高程(米)
 %   整理输出为: 天内秒 纬度 经度 高程 水平精度
 global Choose_HighGPSData
 %外部高精度定位数据(北斗伴侣) 待处理数据文件名 文件路径 
 global GPS_FilePath GPS_FileName 
-if Choose_HighGPSData == 1
-    disp('----------------------------------------------------');
-    disp('*-----------读取外部高精度定位数据(北斗伴侣)--------*！');    
-    Path_HighGPS = [GPS_FilePath,GPS_FileName];  
-    Temp = load(Path_HighGPS);
-    if isempty(Temp) == 1
-        disp('1.******High GPS数据读取失败******');
-    else 
-        L = length(Temp);
-        HighGPS = zeros(L,6);
-        for i=1:L
-            %时间计算
-            Second = fix(mod(Temp(i,1),100));   %有的时候北斗伴侣输出是带ms了
-            Minute = fix(fix(mod(Temp(i,1),10000))/100);
-            Hour = fix(Temp(i,1)/10000);
-            HighGPS(i,1) = Hour*3600+Minute*60+Second;
-            %纬度计算
-            Degree = fix(Temp(i,2)/100);
-            DMinute = mod(Temp(i,2),100);
-            HighGPS(i,2) = Degree+DMinute/60.0;
-            %经度计算
-            Degree = fix(Temp(i,3)/100);
-            DMinute = mod(Temp(i,3),100);
-            HighGPS(i,3) = Degree+DMinute/60.0;
-            %高程
-            HighGPS(i,4) = Temp(i,6);
-            %水平定位精度
-            HighGPS(i,5) = Temp(i,5);
-            %定位模式 0 无效 1单点 4RTK浮点 5RTK固定 6惯导
-            HighGPS(i,6) = Temp(i,4);
-        end
-        save(tDataSavePath,'HighGPS','-append');
-    end        
-    disp('*-----------外部高精度定位数据(北斗伴侣)完成--------*！');  
-    disp('****************************************************');
+
+if isempty(GPS_FilePath) == 1
+    disp('警告：******未设置高精度GPS数据路径！******');
+else
+    if Choose_HighGPSData == 1 
+        Path_HighGPS = [GPS_FilePath,GPS_FileName];     
+        Temp = load(Path_HighGPS);
+        if isempty(Temp) == 1
+            disp('5.******High GPS数据读取失败******');
+        else 
+            L = length(Temp);
+            HighGPS = zeros(L,6);
+            for i=1:L
+                %时间计算
+                Second = fix(mod(Temp(i,1),100));   %有的时候北斗伴侣输出是带ms了
+                Minute = fix(fix(mod(Temp(i,1),10000))/100);
+                Hour = fix(Temp(i,1)/10000);
+                HighGPS(i,1) = Hour*3600+Minute*60+Second;
+                %纬度计算
+                Degree = fix(Temp(i,2)/100);
+                DMinute = mod(Temp(i,2),100);
+                HighGPS(i,2) = Degree+DMinute/60.0;
+                %经度计算
+                Degree = fix(Temp(i,3)/100);
+                DMinute = mod(Temp(i,3),100);
+                HighGPS(i,3) = Degree+DMinute/60.0;
+                %高程
+                HighGPS(i,4) = Temp(i,6);
+                %水平定位精度
+                HighGPS(i,5) = Temp(i,5);
+                %定位模式 0 无效 1单点 4RTK浮点 5RTK固定 6惯导
+                HighGPS(i,6) = Temp(i,4);
+            end
+            HighGPS(:,2:3) = HighGPS(:,2:3).*(pi/180.0);
+            save(tDataSavePath,'HighGPS','-append');
+            disp('5.High GPS数据存储成功！');
+            DataPrepare_PlotData_Original(HighGPS,6);
+        end      
+    end
 end
 
+disp('*-------------------数据读取完成--------------------*！');
+disp('*****************************************************');
 
 % --- Executes when selected object is changed in uibuttongroup1.
 function uibuttongroup1_SelectionChangedFcn(hObject, eventdata, handles)
@@ -577,8 +506,7 @@ function figure1_DeleteFcn(hObject, eventdata, handles)
 clear global IMU_FilePath IMU_FileName Choose_Device Choose_DataKinde
 clear global Choose_Foot_LeftorRight Choose_Time Choose_HighGPSData
 clear global GPS_FilePath GPS_FileName 
-disp('*--------程序退出！-------*');
-
+disp('*/\/\/\/\/\/\/\/\/\/\程序退出/\/\/\/\/\/\/\/\/\/\*');
 
 % --- Executes when selected object is changed in uibuttongroup7.
 function uibuttongroup7_SelectionChangedFcn(hObject, eventdata, handles)

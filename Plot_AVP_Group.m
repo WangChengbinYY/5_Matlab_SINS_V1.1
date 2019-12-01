@@ -5,8 +5,8 @@ function Plot_AVP_Group(AVP0,AVP1)
 %       时间(单位ms) 姿态(俯仰、横滚、航向，单位弧度) 速度 位置(纬度、经度，单位弧度，高程 单位米)
 %
 G_CONST = CONST_Init();
-Rmh = Earth_get_Rmh(G_CONST,AVP0(1,1),AVP0(3,1));
-Rnh = Earth_get_Rnh(G_CONST,AVP0(1,1),AVP0(3,1));
+Rmh = Earth_get_Rmh(G_CONST,AVP0(1,8),AVP0(1,10));
+Rnh = Earth_get_Rnh(G_CONST,AVP0(1,8),AVP0(1,10));
 
 if nargin == 1
 %% 绘制姿态信息    
