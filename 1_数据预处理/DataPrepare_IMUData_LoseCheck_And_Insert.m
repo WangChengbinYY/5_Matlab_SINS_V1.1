@@ -1,22 +1,23 @@
 function NewData = DataPrepare_IMUData_LoseCheck_And_Insert(mData,Hz)
-%对输入的数据按照其自身采样记录时间进行丢包判断，并进行插值处理
+%对输入的数据按照其自身采样记录时间进行丢包判断，并进行插值处理,最后一个点不能是授时点
 % 不能有时间回跳的突变！
-DeltaT_ms = fix(1/Hz*1000);
+% 第一列为时间信息 
+DeltaT_ms = 1/Hz;
 [L,m] = size(mData);
 
-% 1.先判断数据是否丢数  注意：*此处偷懒，仅利用第二列的ms数据进行判断，不考虑 丢包超过1s的情况！！！！*
+% 1.先判断数据是否丢数  
+% 因为 选取了两个授时点之间的数据，因此，时间序列应该是递增的
 j = 1;    
 mLoseRecord=[0,0];
 mLoseTime = 0;
 for i=1:L-1
-    TempMS = mData(i+1,2)-mData(i,2);  %两个数据的ms差值
-    if TempMS < -900  %跨秒情况
-        TempMS = TempMS + 1000;
+    IntervalTime = mData(i+1,1)-mData(i,1);  %两个数据之间的时间差   
+    if IntervalTime < 0
+        disp("警告：整秒内数据丢包判断中，发现有跳点！") 
     end
-    
-    tNumber = round(TempMS/DeltaT_ms)-1;
+    tNumber = round(IntervalTime/DeltaT_ms)-1;
     if tNumber > 0            
-        mLoseRecord(j,1) = i+1;
+        mLoseRecord(j,1) = i+1;        %在序号 i+1之前要插数
         mLoseRecord(j,2) = tNumber;
         j = j+1;
         mLoseTime = mLoseTime+1;

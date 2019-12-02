@@ -1,5 +1,5 @@
 function [Second,SerialNum] = DataPrepare_IMUData_FindSecondSerial(mData,mSecond)
-% 1.查找数据中对应整秒的起始位置
+% 查找数据中对应整秒的起始位置，注意这里使用的还是两列时间数据
 [L,m] = size(mData);
 
 for i = 1:L
@@ -17,4 +17,4 @@ end
 
 %整个数据都没找到有效的整秒起点
 SerialNum = 0;
-
+Second = 0;

@@ -4,11 +4,6 @@ function DataPrepare_IMUData_TimeAlignmentUTC(mDataPath,HzIMU,HzMag,mTimeStart,m
 %2.若是没有设定起始和结束时间，则默认搜索，以最后一列的时间状态为开始，默认多1S
 %3.数据时间对齐后，进行插值处理！
 %采样频率
-HzIMU = 200;
-HzMag = 100;
-%采样间隔
-DeltaT_IMU = 1/HzIMU;
-DeltaT_Mag = 1/HzMag;
 
 %% 一、 准备工作阶段
 % 0.错误排查
@@ -79,8 +74,30 @@ else
     end
 end
 
-%% 二、 进入数据截取阶段，包含缺数插值
+%获取了真实有效的GPS时间，
+    fprintf('获取真实有效的GPS截取时间为：%d  %d \n',TimeStart,TimeEnd);
 
+%% 二、 进入数据截取阶段，包含缺数插值
+%先全部截取完，然后绘制，并考虑对GPS 和高精度GPS的数据进行截取！
+    %1.先截取IMU 并存储
+    IMU = DataPrepare_IMUData_TimeAlignmentUTC_Cut(IMU,200,TimeStart,TimeEnd);
+    % 存储
+    
+    % 绘制
+    
+    %2. 磁强计数据
+    
+    %3. UWB数据
+    
+    %4. 足底压力数据
+    
+    %5. 模块内GPS数据
+    
+    %6. 外部高精度GPS数据
+    
+    
+    
+    
 
 
 
