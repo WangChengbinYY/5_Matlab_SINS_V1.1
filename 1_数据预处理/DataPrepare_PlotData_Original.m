@@ -8,18 +8,18 @@ switch mChoose
     case 1
         %绘制IMU数据 时间 加计 陀螺 时间状态
         figure;
-        plot(mData(:,1),mData(:,2),'k');  %加计x
-        hold on; plot(mData(:,1),mData(:,3),'r');
-        hold on; plot(mData(:,1),mData(:,4),'g');
+        plot(mData(:,1)+mData(:,2)./1000.0,mData(:,3),'k');  %加计x
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,4),'r');
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,5),'g');
         xlabel('\it t \rm / s');
         ylabel('\it m \rm / s2');
         title('加计输出');
         legend('x','y','z');
         grid on;
         figure;
-        plot(mData(:,1),mData(:,5),'k');  %陀螺x
-        hold on; plot(mData(:,1),mData(:,6),'r');
-        hold on; plot(mData(:,1),mData(:,7),'g');
+        plot(mData(:,1)+mData(:,2)./1000.0,mData(:,6),'k');  %陀螺x
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,7),'r');
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,8),'g');
         xlabel('\it t \rm / s');
         ylabel('\it 弧度 \rm / s');
         title('陀螺输出');
@@ -28,9 +28,9 @@ switch mChoose
     case 2
         %磁强计输出
         figure;
-        plot(mData(:,1),mData(:,2),'k');  %磁强计x
-        hold on; plot(mData(:,1),mData(:,3),'r');
-        hold on; plot(mData(:,1),mData(:,4),'g');
+        plot(mData(:,1)+mData(:,2)./1000.0,mData(:,3),'k');  %磁强计x
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,4),'r');
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,5),'g');
         xlabel('\it t \rm / s');
         ylabel('\it uT');
         title('磁强计输出');
@@ -39,10 +39,10 @@ switch mChoose
     case 3
         %压力传感器输出
         figure;
-        plot(mData(:,1),mData(:,2),'k');  %足底压力x
-        hold on; plot(mData(:,1),mData(:,3),'r');
-        hold on; plot(mData(:,1),mData(:,4),'g');
-        hold on; plot(mData(:,1),mData(:,5),'b');
+        plot(mData(:,1)+mData(:,2)./1000.0,mData(:,3),'k');  %足底压力x
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,4),'r');
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,5),'g');
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,6),'b');
         xlabel('\it t \rm / s');       
         title('脚底压力输出');
         legend('脚跟内侧','脚跟外侧','脚掌内侧','脚掌外侧');
@@ -50,7 +50,7 @@ switch mChoose
     case 4
         %UWB输出
         figure;
-        plot(mData(:,1),mData(:,2),'k');  %UWB
+        plot(mData(:,1)+mData(:,2)./1000.0,mData(:,3),'k');  %UWB
         xlabel('\it t \rm / s');
         ylabel('\it m');        
         title('UWB测距');

@@ -77,7 +77,7 @@ Choose_Foot_LeftorRight = 1;
 global Choose_FootPressure
 Choose_FootPressure = 1;
 
-%选择时间同步输入 1:内部时钟(默认)(从0秒开始计时) 2:内部GPS时间(从有效定位UTC时间天内秒开始)
+%选择时间同步输入 1:内部GPS时间(默认)(从有效定位UTC时间天内秒开始) 2:内部时钟(从0秒开始计时)
 global Choose_Time
 Choose_Time = 1;
 %外部高精度定位数据(北斗伴侣) 0:无 1:有  
@@ -245,7 +245,7 @@ else
     end
 
     %% 1.4 读取GPS数据
-    if Choose_Time == 2       %使用GPS时间，意味着有GPS数据
+    if Choose_Time == 1       %使用GPS时间，意味着有GPS数据
         Path_GPS = [tPath,'_GPS.txt'];  
         GPS = load(Path_GPS);
         if isempty(GPS) == 1
@@ -376,7 +376,7 @@ function pushbutton3_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton3 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-%选择时间同步输入 1:内部时钟(默认)(从0秒开始计时) 2:内部GPS时间(从有效定位UTC时间天内秒开始)
+%选择时间同步输入 1:内部GPS时间(默认)(从有效定位UTC时间天内秒开始) 2:内部时钟(从0秒开始计时)
 %% 0. 先获取需要截取时间段的 起始和结束 时间
 global Time_Start Time_End tDataSavePath
 Time_Start = str2double(get(handles.edit2,'String'));
@@ -384,16 +384,23 @@ Time_End = str2double(get(handles.edit4,'String'));
 global Choose_Time
 disp('----------------------------------------------------');
 disp('*------------------开始时间同步处理-----------------*');
-%% 1. 使用内部时钟
-if Choose_Time == 1          
-    DataPrepare_IMUData_TimeAlignmentSelf(tDataSavePath,200,100,Time_Start,Time_End);   
-    disp('*-----------使用内部时钟，处理完成！-------*');    
+if isempty(tDataSavePath) == 1
+    disp('*-----------数据路径为空，无法读取数据！------------*');    
+    disp('****************************************************');
+    return;
 end
 
-%% 2. 使用GPS时钟同步
-if Choose_Time == 2
+%% 1. 使用GPS时间同步
+if Choose_Time == 1          
+    DataPrepare_IMUData_TimeAlignmentUTC(tDataSavePath,200,100,Time_Start,Time_End)  
+    disp('*---------------使用GPS时钟同步完成！---------------*');    
+    disp('****************************************************');
+end
 
-    disp('*----------------使用GPS时钟同步完成！--------------*');
+%% 2. 使用内部时钟
+if Choose_Time == 2
+    DataPrepare_IMUData_TimeAlignmentSelf(tDataSavePath,200,100,Time_Start,Time_End); 
+    disp('*--------------使用内部时钟，处理完成！--------------*');
     disp('****************************************************');
 end
 
@@ -548,3 +555,84 @@ function edit4_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+
+function FootPres = DataPrepare_LoadData_FootPres(mLoadPath)
+%按照路径读取足底压力数据的txt
+FootPres = [];
+Temp = load(mLoadPath);
+if isempty(Temp) == 1
+    return;
+else
+    L = length(Temp)-1;
+    FootPres = zeros(L,7);
+    FootPres(1:L,1:7) = Temp(1:L,1:7);
+end         
+        
+
+function [IMU,Magnetic] = DataPrepare_LoadData_IMU_Include_Magnetic(mLoadPath)
+% %按照路径读取包含磁强计数据的 IMU 数据 的txt文件
+% 注意：目前使用的是MPU9250 IMU采样频率是200Hz，磁强计是100Hz，如果变动，这里需要进行改变
+IMU = [];
+Magnetic = [];
+Temp = load(mLoadPath);
+
+if isempty(Temp) == 1
+    return;
+else
+    L = length(Temp)-1;    %陀螺单位是度/s  加计 m/s2 磁强计 uT
+    IMU = zeros(L,9);       
+    IMU(1:L,1:5) = Temp(1:L,1:5);  
+    IMU(1:L,6:8) = Temp(1:L,6:8)./(180.0/pi);   
+    IMU(1:L,9) = Temp(1:L,13);  %时间状态
+    %拆分磁强计数据 
+    Magnetic = zeros(fix(L/2),6);
+    for i=1:fix(L/2)
+        Magnetic(i,1:2) = IMU(1+(i-1)*2,1:2); %时间        
+        Magnetic(i,3:5) = Temp(1+(i-1)*2,9:11);
+        Magnetic(i,6) = Temp(1+(i-1)*2,13); %时间状态
+    end      
+end
+
+
+function IMU = DataPrepare_LoadData_IMU_Only(mLoadPath)
+% 读取不包含磁强计数据的 IMU 数据 (ADIS)
+IMU = [];
+Temp = load(mLoadPath);
+
+if isempty(Temp) == 1
+    return;
+else
+    L = length(Temp)-1;    %陀螺单位是度/s  加计 m/s2 磁强计 uT
+    IMU = zeros(L,9);       %最后一列带时间标
+    IMU(1:L,1:5) = Temp(1:L,1:5);
+    IMU(1:L,6:8) = Temp(1:L,6:8)./(180.0/pi);   
+    IMU(1:L,9) = Temp(1:L,11);
+end
+
+
+function Magnetic = DataPrepare_LoadData_Magnetic_Only(mLoadPath)
+% 读取磁强计数据  从IMUA_MPU9250采集   磁强计采集频率100Hz
+Magnetic = [];
+Temp = load(mLoadPath);
+
+if isempty(Temp) == 1
+    return;
+else
+    L = length(Temp)-1;    %磁强计单位 uT
+    Magnetic = zeros(L,6);
+    Magnetic(1:L,1:6) = Temp(1:L,1:6);    %包含时间状态
+end
+
+function UWB = DataPrepare_LoadData_UWB(mLoadPath)
+%
+UWB = [];
+Temp = load(mLoadPath);
+if isempty(Temp) == 1
+    return;
+else
+    L = length(Temp)-1;
+    UWB = zeros(L,4);
+    UWB(1:L,1:4) = Temp(1:L,1:4);
+end  
