@@ -24,3 +24,9 @@ for i=1:199
     Try(i,3) = (i-1)*5;
 end
     
+
+
+figure;
+plot(IMU(:,1),IMU(:,5).*10+260);
+hold on;
+plot(Magnetic(:,1),Magnetic(:,2),'r');

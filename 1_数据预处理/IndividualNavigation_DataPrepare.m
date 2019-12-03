@@ -392,7 +392,7 @@ end
 
 %% 1. 使用GPS时间同步
 if Choose_Time == 1          
-    DataPrepare_IMUData_TimeAlignmentUTC(tDataSavePath,200,100,Time_Start,Time_End)  
+    DataPrepare_IMUData_TimeAlignmentUTC(tDataSavePath,200,100,Time_Start,Time_End);  
     disp('*---------------使用GPS时钟同步完成！---------------*');    
     disp('****************************************************');
 end
@@ -636,3 +636,8 @@ else
     UWB = zeros(L,4);
     UWB(1:L,1:4) = Temp(1:L,1:4);
 end  
+
+
+
+
+

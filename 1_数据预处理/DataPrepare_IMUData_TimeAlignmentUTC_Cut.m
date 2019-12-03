@@ -4,7 +4,7 @@ function CutData = DataPrepare_IMUData_TimeAlignmentUTC_Cut(mData,Hz,mStartT,mEn
 % 2.并按照采样频率进行对齐
 % 3.并进行插值处理
 % 数据的格式，一般是 秒 毫秒 数据.... 时间状态
-
+CutData = [];
 %% 0. 首先对输入的 起始时间和结束时间，进行GPS授时有效性的判断
 Second_StartSerial = 0; Second_NextStartSerial = 0;
 Second_StartTime = 0;   Second_NextStartTime = 0;
@@ -44,7 +44,7 @@ end
 %% 一、在有效的授时起始和终点范围之间，进行数据处理
 [L,m] = size(mData);
 DeltaT = fix((1/Hz)*1000);  %ms对应数据第二列
-CutData = zeros((mEndT-mStartT+1)*Hz,m-1);
+CutData = zeros((mEndT-mStartT+1)*Hz,m-2);
 CutData_SavedNum = 0;
 % 从修订后的起始时间，开始，搜索每一段有GPS授时的数据
 Second_NextStartTime = Second_StartTime; 
@@ -78,11 +78,10 @@ while s <= mEndT
     Temp_Data = DataPrepare_IMUData_TimeAlignmentUTC_SecondAlign(Temp_Data,Hz);
     %6.处理后的数据，进行存储
     [L1,m1] = size(Temp_Data);
-    CutData(CutData_SavedNum+1:CutData_SavedNum+L1,:) = Temp_Data;    
+    CutData(CutData_SavedNum+1:CutData_SavedNum+L1,:) = Temp_Data(:,1:m-2);    
     CutData_SavedNum = CutData_SavedNum+L1;
 end    
 
 
 
-fuck=1;
 

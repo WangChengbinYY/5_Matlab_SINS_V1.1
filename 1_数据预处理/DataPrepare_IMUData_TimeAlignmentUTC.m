@@ -79,30 +79,95 @@ end
 
 %% 二、 进入数据截取阶段，包含缺数插值
 %先全部截取完，然后绘制，并考虑对GPS 和高精度GPS的数据进行截取！
-    %1.先截取IMU 并存储
-    IMU = DataPrepare_IMUData_TimeAlignmentUTC_Cut(IMU,200,TimeStart,TimeEnd);
-    % 存储
+tIndex = strfind(mDataPath,'.');
+NewPath = mDataPath(1:tIndex-1);
+NewPath = [NewPath,sprintf('_%d_%d',TimeStart,TimeEnd),'.mat'];
+%1.先截取IMU 并存储
+IMU = DataPrepare_IMUData_TimeAlignmentUTC_Cut(IMU,200,TimeStart,TimeEnd);
+if isempty(IMU) == 1
+    disp('1.**** IMU数据时间截取失败！****')
+else
+    disp('1.IMU数据时间截取完成！')
+    save(NewPath,'IMU');                        %存储截取后的新数据
+    DataPrepare_PlotData_TimeCuted(IMU,1);       %绘制
+end    
+%2. 磁强计数据
+if exist('Magnetic','var')   
+    Magnetic = DataPrepare_IMUData_TimeAlignmentUTC_Cut(Magnetic,100,TimeStart,TimeEnd);
+    if isempty(Magnetic) == 1
+        disp('2.**** Magnetic数据时间截取失败！****')
+    else
+        disp('2.Magnetic数据时间截取完成！')
+        save(NewPath,'Magnetic','-append');                  %存储
+        DataPrepare_PlotData_TimeCuted(Magnetic,2);       %绘制
+    end
+end   
+%3. 足底压力数据    
+if exist('FootPres','var')   
+    FootPres = DataPrepare_IMUData_TimeAlignmentUTC_Cut(FootPres,200,TimeStart,TimeEnd);
+    if isempty(FootPres) == 1
+        disp('3.**** FootPres数据时间截取失败！****')
+    else
+        disp('3.FootPres数据时间截取完成！')
+        save(NewPath,'FootPres','-append');                  %存储
+        DataPrepare_PlotData_TimeCuted(FootPres,3);          %绘制
+    end
+end    
+%4. UWB数据
+ if exist('UWB','var')   
+    UWB = DataPrepare_IMUData_TimeAlignmentUTC_Cut(UWB,200,TimeStart,TimeEnd);
+    if isempty(UWB) == 1
+        disp('4.**** UWB数据时间截取失败！****')
+    else
+        disp('4.UWB数据时间截取完成！')
+        save(NewPath,'UWB','-append');                  %存储
+        DataPrepare_PlotData_TimeCuted(UWB,4);          %绘制
+    end
+end 
+%5. 模块内GPS数据
+if exist('GPS','var')       
+    [L,m] = size(GPS);
+    First = 0; Second = L;
+    for i=1:L
+       if TimeStart <= GPS(i,1)
+           First = i;
+           break;
+       end
+    end
+    for i=1:L
+       if TimeEnd <= GPS(i,1)
+           Second = i;
+           break;
+       end
+    end       
+    GPS = GPS(First:Second,:);
+    disp('5.GPS数据时间截取完成！')
+    save(NewPath,'GPS','-append');                  %存储
+    DataPrepare_PlotData_TimeCuted(GPS,5);          %绘制
+end
+%6. 外部高精度GPS数据
+if exist('HighGPS','var')       
+    [L,m] = size(HighGPS);
+    First = 0; Second = L;
+    for i=1:L
+       if TimeStart <= HighGPS(i,1)
+           First = i;
+           break;
+       end
+    end
+    for i=1:L
+       if TimeEnd <= HighGPS(i,1)
+           Second = i;
+           break;
+       end
+    end       
+    HighGPS = HighGPS(First:Second,:);
+    disp('6.HighGPS数据时间截取完成！')
+    save(NewPath,'HighGPS','-append');                  %存储
+    DataPrepare_PlotData_TimeCuted(HighGPS,6);          %绘制
+end    
     
-    % 绘制
     
-    %2. 磁强计数据
-    
-    %3. UWB数据
-    
-    %4. 足底压力数据
-    
-    %5. 模块内GPS数据
-    
-    %6. 外部高精度GPS数据
-    
-    
-    
-    
-
-
-
-
-fuck = 1;
-
+  
 
 
