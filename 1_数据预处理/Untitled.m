@@ -56,9 +56,44 @@ plot(TempData(:,1),TempData(:,2));
 hold on; plot(NewData(:,1),NewData(:,2),'r');
     
 
+[n,m] = size(Data_Foot_Press);
+FootDiffer = zeros(n,5);
+FootDiffer(:,1) = Data_Foot_Press(:,1);
+for j = 2:5
+    for i = 1:n-1
+        if(Data_Foot_Press(i,j)) > 3600
+%             Differ = Data_Foot_Press(i+1,j) - Data_Foot_Press(i,j);
+%             Differ = (Differ/abs(Differ))*(300/(exp(abs(Differ)/200)+300));
+            FootDiffer(i,j) = Data_Foot_Press(i+1,j) - Data_Foot_Press(i,j);
+        else
+%             FootDiffer(i,j) = Data_Foot_Press(i,j);
+        end
+    end
+end
 figure;
-plot(mData(:,1),mData(:,2));
-hold on; plot(NewData(:,1),NewData(:,2),'r');
+plot(FootDiffer(:,1),FootDiffer(:,2),'k');  %×ãµ×Ñ¹Á¦x
+hold on; plot(FootDiffer(:,1),FootDiffer(:,3),'r');
+hold on; plot(FootDiffer(:,1),FootDiffer(:,4),'g');
+hold on; plot(FootDiffer(:,1),FootDiffer(:,5),'b');
+xlabel('\it t \rm / s');       
+title('½Åµ×Ñ¹Á¦');
+grid on;
+legend('½Å¸úÄÚ²à','½Å¸úÍâ²à','½ÅÕÆÄÚ²à','½ÅÕÆÍâ²à');
+
+
+x = 0:10:20000;
+k = 3000;
+y = power(exp(x/200)+k,-1).*k;
+k = 300;
+y1 = power(exp(x/200)+k,-1).*k;
+k = 30;
+y2 = power(exp(x/200)+k,-1).*k;
+figure;
+plot(x,y); 
+hold on; plot(x,y1,'r');
+hold on; plot(x,y2,'r');
+
+
 
 
 
@@ -73,6 +108,8 @@ for i=2:7
     hold on;
     plot(NewIMU(:,1),NewIMU(:,i),'r');
 end
+
+
 
 
 for i=2

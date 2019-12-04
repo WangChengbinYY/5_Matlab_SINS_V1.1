@@ -101,7 +101,7 @@ end
 if OnOff_FootPre == 1
 %-----------------------压力数据转换---------------------------    
     Data_Foot = zeros(n,5);             %采集的电压数据
-    Data_Foot_Press = zeros(n,5);          %对应的压力数据   将电压转化为电阻  再将电阻转化为压力值
+    Data_Foot_Press = zeros(n,5);       %对应的压力数据   将电压转化为电阻  再将电阻转化为压力值
     
     Data_Foot(:,1) = Origion_Foot(Number_Start:Number_End,1) + Origion_Foot(Number_Start:Number_End,2)./1000;
     Data_Foot(:,2:5) = Origion_Foot(Number_Start:Number_End,3:6);

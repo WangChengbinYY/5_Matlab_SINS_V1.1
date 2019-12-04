@@ -531,10 +531,6 @@ switch str
 end
 
 
-
-
-
-
 function edit4_Callback(hObject, eventdata, handles)
 % hObject    handle to edit4 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -636,6 +632,925 @@ else
     UWB = zeros(L,4);
     UWB(1:L,1:4) = Temp(1:L,1:4);
 end  
+
+function NewData = Data_Insert_From_Start_End(First,Second,Number)
+%根据起点和终点，进行 Number个数据插值 线性插值
+%第一列为时间  其余为数据 最后一列为时间状态
+[L,m] = size(First);
+NewData = zeros(Number,m);
+%插值的范围是 从第3列 到 倒数第2列
+%1.计算时间间隔
+DistanceTime = Second(1,1) - First(1,1);
+DistanceData = Second(1,2:m-1) - First(1,2:m-1);
+for i = 1:Number
+    %时间更新
+    NewTime = First(1,1)+DistanceTime*i/(Number+1);
+    NewData(i,1) = NewTime;
+    %数据更新
+    NewData(i,2:m-1) = First(1,2:m-1) + DistanceData.*(i/(Number+1));
+end
+    
+
+function InsertData = Data_Insert_From_Time(First,Second,Time)
+%第一列是时间，后面是数据 最后一列为时间标
+InserData = [];
+if abs(Time-First(1,1))<0.00001   %0.01ms
+    InserData = First;
+    InserData(1,1) = Time;
+    return;
+end
+if abs(Time-Second(1,1))<0.00001   %0.01ms
+    InserData = Second;
+    InserData(1,1) = Time;
+    return;
+end
+if (First(1,1) < Time) && (Time < Second(1,1))
+    [L,m] = size(First);
+    InsertData = zeros(1,m);
+    InsertData(1,1) = Time;
+    InsertData(1,2:m) = (Second(1,2:m)-First(1,2:m)).*((Time-First(1,1))/(Second(1,1)-First(1,1)))+First(1,2:m);
+else
+    return;
+end
+
+
+function [Second,SerialNum] = DataPrepare_IMUData_FindSecondSerial(mData,mSecond)
+% 查找数据中对应整秒的起始位置，注意这里使用的还是两列时间数据
+[L,m] = size(mData);
+
+for i = 1:L
+       %没找到输入的有效整秒数
+       if ( mData(i,1) > mSecond)
+           mSecond = mSecond + 1;
+       end
+       if  (mData(i,1) == mSecond)&&(mData(i,m)==1)
+           %找到整秒的起点了
+           Second = mSecond;
+           SerialNum = i;
+           return;
+       end
+end
+
+%整个数据都没找到有效的整秒起点
+SerialNum = 0;
+Second = 0;
+
+
+function NewData = DataPrepare_IMUData_LoseCheck_And_Insert(mData,Hz)
+%对输入的数据按照其自身采样记录时间进行丢包判断，并进行插值处理,最后一个点不能是授时点
+% 不能有时间回跳的突变！
+% 第一列为时间信息 
+DeltaT_ms = 1/Hz;
+[L,m] = size(mData);
+
+% 1.先判断数据是否丢数  
+% 因为 选取了两个授时点之间的数据，因此，时间序列应该是递增的
+j = 1;    
+mLoseRecord=[0,0];
+mLoseTime = 0;
+for i=1:L-1
+    IntervalTime = mData(i+1,1)-mData(i,1);  %两个数据之间的时间差   
+    if IntervalTime < 0
+        disp("警告：整秒内数据丢包判断中，发现有跳点！") 
+    end
+    tNumber = round(IntervalTime/DeltaT_ms)-1;
+    if tNumber > 0            
+        mLoseRecord(j,1) = i+1;        %在序号 i+1之前要插数
+        mLoseRecord(j,2) = tNumber;
+        j = j+1;
+        mLoseTime = mLoseTime+1;
+        if tNumber > Hz/2
+           disp("额滴神，丢数超过半秒了！！！！") 
+           return;
+        end
+    end
+end    
+
+% 2. 根据是否丢数，进行新数据的空间声明
+if mLoseTime == 0
+    %没有丢数 不用差值，直接返回
+    NewData = mData;
+    return;
+else
+    %有丢数的，需要进行插值
+    L1 = sum(mLoseRecord(:,2));  %需要插值的个数
+    NewData = zeros(L+L1,m);
+    j = 1;
+    mAddNumber = 0;
+    for i=1:L        
+        if i == mLoseRecord(j,1)
+            %第i个数前面需要插值，按照缺的个数插值！ 
+            InsertData = Data_Insert_From_Start_End(mData(i-1,:),mData(i,:),mLoseRecord(j,2));
+            NewData(i+mAddNumber:i+mAddNumber+mLoseRecord(j,2)-1,:) = InsertData;            
+            mAddNumber = mAddNumber+mLoseRecord(j,2);  %记录已经插值的个数
+            %插完后，正常赋值                
+            NewData(i+mAddNumber,:) = mData(i,:);              
+            if j < mLoseTime
+                j=j+1;
+            end
+        else
+           % 正常赋值               
+           NewData(i+mAddNumber,:) = mData(i,:);
+        end             
+    end  
+end
+
+function DataPrepare_PlotData_Original(mData,mChoose)
+% 对读取的数据进行绘制，便于查看图形状态
+% 输入：mData 数据；mChoose 数据种类(1=IMU,2=Magnetic,3=FootPress,
+%   4=UWB,5=GPS,6=HighGPS,)；
+
+
+switch mChoose
+    case 1
+        %绘制IMU数据 时间 加计 陀螺 时间状态
+        figure;
+        plot(mData(:,1)+mData(:,2)./1000.0,mData(:,3),'k');  %加计x
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,4),'r');
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,5),'g');
+        xlabel('\it t \rm / s');
+        ylabel('\it m \rm / s2');
+        title('加计输出');
+        legend('x','y','z');
+        grid on;
+        figure;
+        plot(mData(:,1)+mData(:,2)./1000.0,mData(:,6),'k');  %陀螺x
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,7),'r');
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,8),'g');
+        xlabel('\it t \rm / s');
+        ylabel('\it 弧度 \rm / s');
+        title('陀螺输出');
+        legend('x','y','z');
+        grid on;     
+    case 2
+        %磁强计输出
+        figure;
+        plot(mData(:,1)+mData(:,2)./1000.0,mData(:,3),'k');  %磁强计x
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,4),'r');
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,5),'g');
+        xlabel('\it t \rm / s');
+        ylabel('\it uT');
+        title('磁强计输出');
+        legend('x','y','z');
+        grid on;
+    case 3
+        %压力传感器输出
+        figure;
+        plot(mData(:,1)+mData(:,2)./1000.0,mData(:,3),'k');  %足底压力x
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,4),'r');
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,5),'g');
+        hold on; plot(mData(:,1)+mData(:,2)./1000.0,mData(:,6),'b');
+        xlabel('\it t \rm / s');       
+        title('脚底压力输出');
+        legend('脚跟内侧','脚跟外侧','脚掌内侧','脚掌外侧');
+        grid on;        
+    case 4
+        %UWB输出
+        figure;
+        plot(mData(:,1)+mData(:,2)./1000.0,mData(:,3),'k');  %UWB
+        xlabel('\it t \rm / s');
+        ylabel('\it m');        
+        title('UWB测距');
+        legend('UWB');
+        grid on;
+    case 5
+        %GPS输出
+        %原始数据GPS经纬度是 角度，要转换为弧度
+        G_CONST = CONST_Init();
+        Rmh = Earth_get_Rmh(G_CONST,mData(1,2),mData(1,4));
+        Rnh = Earth_get_Rnh(G_CONST,mData(1,2),mData(1,4));
+        figure;  
+        set(gcf,'position',[250,250,1200,480]);
+        %水平轨迹
+        subplot(1,3,1);
+        plot(0, 0, 'rp');     %在起始位置画一个 五角星
+        hold on;    
+        plot((mData(:,3)-mData(1,3))*Rnh,(mData(:,2)-mData(1,2))*Rmh*cos(mData(1,2)));        
+        xlabel('\it 东向 \rm / m');
+        ylabel('\it 北向 \rm / m');
+        title('行驶路线');
+        grid on;
+        %高程
+        subplot(1,3,2);
+        plot(mData(:,1),mData(:,4));
+        xlabel('\it t \rm / s');
+        ylabel('\it m'); 
+        title('高程');
+        grid on;
+        %水平精度
+        subplot(1,3,3);
+        plot(mData(:,1),mData(:,5));
+        xlabel('\it t \rm / s');
+        ylabel('\it HDop \rm m'); 
+        title('定位精度');
+        grid on;   
+     case 6   
+        %高精度GPS输出
+        G_CONST = CONST_Init();
+        Rmh = Earth_get_Rmh(G_CONST,mData(1,2),mData(1,4));
+        Rnh = Earth_get_Rnh(G_CONST,mData(1,2),mData(1,4));
+        figure;  
+        set(gcf,'position',[50,50,680,680]);
+        %水平轨迹
+        subplot(2,2,1);
+        plot(0, 0, 'rp');     %在起始位置画一个 五角星
+        hold on;    
+        plot((mData(:,3)-mData(1,3))*Rnh,(mData(:,2)-mData(1,2))*Rmh*cos(mData(1,2)));        
+        xlabel('\it 东向 \rm / m');
+        ylabel('\it 北向 \rm / m');
+        title('行驶路线');
+        grid on;
+        %高程
+        subplot(2,2,2);
+        plot(mData(:,1),mData(:,4));
+        xlabel('\it t \rm / s');
+        ylabel('\it m'); 
+        title('高程');
+        grid on;
+        %水平精度
+        subplot(2,2,3);
+        plot(mData(:,1),mData(:,5));
+        xlabel('\it t \rm / s');
+        ylabel('\it HDop \rm m'); 
+        title('定位精度');
+        grid on;       
+        %定位方式
+        subplot(2,2,4);
+        plot(mData(:,1),mData(:,6));
+        xlabel('\it t \rm / s');
+        ylabel('\it 定位方式'); 
+        title('定位模式');
+        legend('0无效 1单点 4RTK浮点 5RTK固定 6惯导')
+        grid on;          
+end
+
+
+
+
+function DataPrepare_PlotData_TimeCuted(mData,mChoose)
+% 对时间截取后的数据进行绘制，便于查看图形状态
+% 输入：mData 数据；mChoose 数据种类(1=IMU,2=Magnetic,3=FootPress,
+%   4=UWB,5=GPS,6=HighGPS,)；
+
+
+switch mChoose
+    case 1
+        %绘制IMU数据 时间 加计 陀螺 时间状态
+        figure;
+        plot(mData(:,1),mData(:,2),'k');  %加计x
+        hold on; plot(mData(:,1),mData(:,3),'r');
+        hold on; plot(mData(:,1),mData(:,4),'g');
+        xlabel('\it t \rm / s');
+        ylabel('\it m \rm / s2');
+        title('加计输出');
+        legend('x','y','z');
+        grid on;
+        figure;
+        plot(mData(:,1),mData(:,5),'k');  %陀螺x
+        hold on; plot(mData(:,1),mData(:,6),'r');
+        hold on; plot(mData(:,1),mData(:,7),'g');
+        xlabel('\it t \rm / s');
+        ylabel('\it 弧度 \rm / s');
+        title('陀螺输出');
+        legend('x','y','z');
+        grid on;     
+    case 2
+        %磁强计输出
+        figure;
+        plot(mData(:,1),mData(:,2),'k');  %磁强计x
+        hold on; plot(mData(:,1),mData(:,3),'r');
+        hold on; plot(mData(:,1),mData(:,4),'g');
+        xlabel('\it t \rm / s');
+        ylabel('\it uT');
+        title('磁强计输出');
+        legend('x','y','z');
+        grid on;
+    case 3
+        %压力传感器输出
+        figure;
+        plot(mData(:,1),mData(:,2),'k');  %足底压力x
+        hold on; plot(mData(:,1),mData(:,3),'r');
+        hold on; plot(mData(:,1),mData(:,4),'g');
+        hold on; plot(mData(:,1),mData(:,5),'b');
+        xlabel('\it t \rm / s');       
+        title('脚底压力输出');
+        legend('脚跟内侧','脚跟外侧','脚掌内侧','脚掌外侧');
+        grid on;        
+    case 4
+        %UWB输出
+        figure;
+        plot(mData(:,1),mData(:,2),'k');  %UWB
+        xlabel('\it t \rm / s');
+        ylabel('\it m');        
+        title('UWB测距');
+        legend('UWB');
+        grid on;
+    case 5
+        %GPS输出
+        %原始数据GPS经纬度是 角度，要转换为弧度
+        G_CONST = CONST_Init();
+        Rmh = Earth_get_Rmh(G_CONST,mData(1,2),mData(1,4));
+        Rnh = Earth_get_Rnh(G_CONST,mData(1,2),mData(1,4));
+        figure;  
+        set(gcf,'position',[250,250,1200,480]);
+        %水平轨迹
+        subplot(1,3,1);
+        plot(0, 0, 'rp');     %在起始位置画一个 五角星
+        hold on;    
+        plot((mData(:,3)-mData(1,3))*Rnh,(mData(:,2)-mData(1,2))*Rmh*cos(mData(1,2)));        
+        xlabel('\it 东向 \rm / m');
+        ylabel('\it 北向 \rm / m');
+        title('行驶路线');
+        grid on;
+        %高程
+        subplot(1,3,2);
+        plot(mData(:,1),mData(:,4));
+        xlabel('\it t \rm / s');
+        ylabel('\it m'); 
+        title('高程');
+        grid on;
+        %水平精度
+        subplot(1,3,3);
+        plot(mData(:,1),mData(:,5));
+        xlabel('\it t \rm / s');
+        ylabel('\it HDop \rm m'); 
+        title('定位精度');
+        grid on;   
+     case 6   
+        %高精度GPS输出
+        G_CONST = CONST_Init();
+        Rmh = Earth_get_Rmh(G_CONST,mData(1,2),mData(1,4));
+        Rnh = Earth_get_Rnh(G_CONST,mData(1,2),mData(1,4));
+        figure;  
+        set(gcf,'position',[50,50,680,680]);
+        %水平轨迹
+        subplot(2,2,1);
+        plot(0, 0, 'rp');     %在起始位置画一个 五角星
+        hold on;    
+        plot((mData(:,3)-mData(1,3))*Rnh,(mData(:,2)-mData(1,2))*Rmh*cos(mData(1,2)));        
+        xlabel('\it 东向 \rm / m');
+        ylabel('\it 北向 \rm / m');
+        title('行驶路线');
+        grid on;
+        %高程
+        subplot(2,2,2);
+        plot(mData(:,1),mData(:,4));
+        xlabel('\it t \rm / s');
+        ylabel('\it m'); 
+        title('高程');
+        grid on;
+        %水平精度
+        subplot(2,2,3);
+        plot(mData(:,1),mData(:,5));
+        xlabel('\it t \rm / s');
+        ylabel('\it HDop \rm m'); 
+        title('定位精度');
+        grid on;       
+        %定位方式
+        subplot(2,2,4);
+        plot(mData(:,1),mData(:,6));
+        xlabel('\it t \rm / s');
+        ylabel('\it 定位方式'); 
+        title('定位模式');
+        legend('0无效 1单点 4RTK浮点 5RTK固定 6惯导')
+        grid on;          
+end
+
+
+function   NewData = DataPrepare_IMUData_TimeAlignmentUTC_SecondAlign(mData,Hz)
+%将输入的数据按照 第一个点 和最后一个点 的时间，对中间的数据进行对齐
+% 输入的第一列为时间 
+
+%1.判断第一个数是否要保存的数据
+DeltaT = 1/Hz;
+[L,m] = size(mData);
+
+if mod(mData(1,1),DeltaT)==0 
+    %输入的第一个点为 时刻点
+    Time = mData(1,1);
+    StartTime = Time;
+else
+    Time = (fix(mData(1,1)/DeltaT)+1)*DeltaT;
+    StartTime = Time;
+end
+
+%2. 计算两个准确时刻之间，能包含多少个 时刻点
+N = 0;  
+while Time < mData(L,1)
+    N = N+1;
+    Time = Time+DeltaT;
+end
+
+%3. 该时间段内的数据已经补包，将其按照时间段进行平均
+AverageTime = (mData(L,1)-mData(1,1))/(L-1);
+TempData = mData;
+%将TempData中的时间，除了首尾外，其它时间进行平均
+for i = 2:L-1
+    TempData(i,1) = TempData(i-1,1)+AverageTime;    
+end
+
+%4. 利用新的时间序列，进行插值处理，求取每个时刻点的数据
+NewData = zeros(N,m);
+for i =1:N
+    %第i个数的 标准时刻时间
+    NewData(i,1) = StartTime+(i-1)*DeltaT;
+    %进行插值计算
+    for j = 1:L
+        if abs(NewData(i,1)-TempData(j,1))<0.00001
+            NewData(i,2:m) = TempData(j,2:m);
+            break;
+        end
+        if TempData(j,1) < NewData(i,1)
+            First = j;
+            continue;
+        else
+            Second = j;
+            InsertData = Data_Insert_From_Time(TempData(First,:),TempData(Second,:),NewData(i,1));
+            NewData(i,:) = InsertData;
+            break;
+        end    
+    end    
+end
+
+
+
+
+function CutData = DataPrepare_IMUData_TimeAlignmentUTC_Cut(mData,Hz,mStartT,mEndT)
+% 0.该函数调用前，确保 输入的起始和结束时间是在有效范围内的
+% 1.针对输入的数据按照起点和终点进行截断
+% 2.并按照采样频率进行对齐
+% 3.并进行插值处理
+% 数据的格式，一般是 秒 毫秒 数据.... 时间状态
+CutData = [];
+%% 0. 首先对输入的 起始时间和结束时间，进行GPS授时有效性的判断
+Second_StartSerial = 0; Second_NextStartSerial = 0;
+Second_StartTime = 0;   Second_NextStartTime = 0;
+% 起点时间的有效性判断
+[Second_StartTime,Second_StartSerial] = DataPrepare_IMUData_FindSecondSerial(mData,mStartT);
+if Second_StartSerial == 0
+    %查找失败
+    fprintf('警告:GPS有效范围数据切割，发现无效时间设定！秒 %d!\n',mStartT);
+    return;
+end 
+if Second_StartTime ~= mStartT
+    fprintf('警告:GPS有效时间起点更改为 %d!\n',Second_StartTime);
+    mStartT = Second_StartTime;
+end 
+% 终点时间的有效性判断
+for s=mEndT:-1:mStartT
+    [Second_NextStartTime,Second_NextStartSerial] = DataPrepare_IMUData_FindSecondSerial(mData,s);
+    if Second_NextStartSerial ~= 0
+        break;
+    end
+end
+if Second_NextStartSerial == 0
+    %查找失败
+    fprintf('警告:GPS有效范围数据切割，发现无效时间设定！秒 %d!\n',mEndT);
+    return;
+end     
+if Second_NextStartTime ~= mEndT
+    fprintf('警告:GPS有效时间起点更改为 %d!\n',Second_NextStartTime);
+    mEndT = Second_NextStartTime-1;
+end 
+% 时间范围的有效性判断
+if mEndT <= mStartT
+    fprintf('警告:GPS时间切割范围无效！%d %d\n',mStartT,mEndT);
+    return;  
+end
+
+%% 一、在有效的授时起始和终点范围之间，进行数据处理
+[L,m] = size(mData);
+DeltaT = fix((1/Hz)*1000);  %ms对应数据第二列
+CutData = zeros((mEndT-mStartT+1)*Hz,m-2);
+CutData_SavedNum = 0;
+% 从修订后的起始时间，开始，搜索每一段有GPS授时的数据
+Second_NextStartTime = Second_StartTime; 
+Second_NextStartSerial = Second_StartSerial;
+Second_StartTime = 0;       Second_StartSerial = 0;
+s = mStartT;
+
+while s <= mEndT
+    %1.找到授时的起始点
+    Second_StartTime = Second_NextStartTime;
+    Second_StartSerial = Second_NextStartSerial;
+    %2.找到下一个授时的起始点    
+    [Second_NextStartTime,Second_NextStartSerial]=DataPrepare_IMUData_FindSecondSerial(mData,Second_StartTime+1);
+    s = Second_NextStartTime;
+    
+    if Second_NextStartSerial == 0
+        break;
+    end
+    
+    %3.获取这段前后有授时的时间 >= 1s 
+    %   第一个 和 最后一个(授时点) 时间是准确的，中间 是内部时钟顺序累加，没有跳点，有可能有丢数，需要插值
+    Temp_Data = zeros(Second_NextStartSerial-Second_StartSerial+1,m-1);   %这里转换时间
+    Temp_Data(:,1) = mData(Second_StartSerial:Second_NextStartSerial,1)+mData(Second_StartSerial:Second_NextStartSerial,2)./1000.0;
+    Temp_Data(:,2:m-1) = mData(Second_StartSerial:Second_NextStartSerial,3:m);
+    Last_Data = Temp_Data(Second_NextStartSerial-Second_StartSerial+1,:);
+    %4.针对这段数据，进行丢包检测,并插值补上丢包数据(只有第一个数是授时点，最后一个授时点不要输入)
+    Temp_Data = DataPrepare_IMUData_LoseCheck_And_Insert(Temp_Data(1:Second_NextStartSerial-Second_StartSerial,:),Hz);
+    %5.补数后，加上当前段的最后一点(有效时间)，进行时间对齐的插值
+    %(在两个有效时间之间，进行时间对齐，包含第一个点，但不包含最后一个点，以防重复)
+    Temp_Data=[Temp_Data;Last_Data];
+    Temp_Data = DataPrepare_IMUData_TimeAlignmentUTC_SecondAlign(Temp_Data,Hz);
+    %6.处理后的数据，进行存储
+    [L1,m1] = size(Temp_Data);
+    CutData(CutData_SavedNum+1:CutData_SavedNum+L1,:) = Temp_Data(:,1:m-2);    
+    CutData_SavedNum = CutData_SavedNum+L1;
+end    
+
+
+function DataPrepare_IMUData_TimeAlignmentUTC(mDataPath,HzIMU,HzMag,mTimeStart,mTimeEnd)
+% 利用GPS的UTC(天内秒)进行时间对齐，使用以下规则
+%1.对设定的起始和结束时间，进行前后1秒的扩展。
+%2.若是没有设定起始和结束时间，则默认搜索，以最后一列的时间状态为开始，默认多1S
+%3.数据时间对齐后，进行插值处理！
+%采样频率
+
+%% 一、 准备工作阶段
+% 0.错误排查
+if (mTimeStart<0)||(mTimeEnd<0)||((mTimeEnd>0)&&(mTimeStart>=mTimeEnd))
+    disp('错误:时间起点和终点设置错误！')
+    return;
+end
+
+% 1. 读取数据
+load(mDataPath);
+if ~exist('IMU','var')   %以是否存在IMU判断是否读到数据
+    disp('错误:未读取到IMU数据！')
+    return;
+end
+[L,m] = size(IMU);
+
+% 2. 查找数据的有效起始时间和结束时间
+% 2.1 搜索有效起始时间
+Temp_Start = 0; Temp_End = 0;
+TimeState = 0;  Temp_StartIsFind = 0;
+for i = 1:L
+    %首次GPS时间有效
+    if(TimeState == 0)&&(IMU(i,m) == 1 )            
+        Temp_Start = IMU(i,1)+2; %开始定位时间会有1s的延迟
+        TimeState = 1;
+    end
+    %判断设定的起始时间是否有效
+    if(Temp_Start==IMU(i,1))&&(IMU(i,m) == 1)
+        Temp_StartIsFind = 1;
+        break;
+    end
+end
+if Temp_StartIsFind == 0
+    disp('错误:没有GPS起始时间！')
+    return;
+end
+% 2.2 搜索有效结束时间
+for i = L:-1:1
+    if IMU(i,m) == 1 
+        Temp_End = IMU(i,1);
+        break;
+    end    
+end
+if Temp_Start>=Temp_End
+    disp('错误:GPS结束时间搜索错误！')
+    return;
+end
+
+TimeStart = 0; TimeEnd = 0;
+% 3. 确定所要截取数据的起始和终点
+if (mTimeStart == 0)
+    TimeStart = Temp_Start;
+else
+    if Temp_Start>=mTimeStart
+        TimeStart = Temp_Start;
+    else
+        TimeStart = mTimeStart;
+    end
+end
+%因为最后1s 时间不完整，去掉
+if (mTimeEnd == 0)
+    TimeEnd = Temp_End-1;
+else
+    if Temp_End>mTimeEnd
+        TimeEnd = mTimeEnd;
+    else
+        TimeEnd = Temp_End-1;
+    end
+end
+
+%获取了真实有效的GPS时间，
+    fprintf('获取真实有效的GPS截取时间为：%d  %d \n',TimeStart,TimeEnd);
+
+%% 二、 进入数据截取阶段，包含缺数插值
+%先全部截取完，然后绘制，并考虑对GPS 和高精度GPS的数据进行截取！
+tIndex = strfind(mDataPath,'.');
+NewPath = mDataPath(1:tIndex-1);
+NewPath = [NewPath,sprintf('_%d_%d',TimeStart,TimeEnd),'.mat'];
+%1.先截取IMU 并存储
+IMU = DataPrepare_IMUData_TimeAlignmentUTC_Cut(IMU,200,TimeStart,TimeEnd);
+if isempty(IMU) == 1
+    disp('1.**** IMU数据时间截取失败！****')
+else
+    disp('1.IMU数据时间截取完成！')
+    save(NewPath,'IMU');                        %存储截取后的新数据
+    DataPrepare_PlotData_TimeCuted(IMU,1);       %绘制
+end    
+%2. 磁强计数据
+if exist('Magnetic','var')   
+    Magnetic = DataPrepare_IMUData_TimeAlignmentUTC_Cut(Magnetic,100,TimeStart,TimeEnd);
+    if isempty(Magnetic) == 1
+        disp('2.**** Magnetic数据时间截取失败！****')
+    else
+        disp('2.Magnetic数据时间截取完成！')
+        save(NewPath,'Magnetic','-append');                  %存储
+        DataPrepare_PlotData_TimeCuted(Magnetic,2);       %绘制
+    end
+end   
+%3. 足底压力数据    
+if exist('FootPres','var')   
+    FootPres = DataPrepare_IMUData_TimeAlignmentUTC_Cut(FootPres,200,TimeStart,TimeEnd);
+    if isempty(FootPres) == 1
+        disp('3.**** FootPres数据时间截取失败！****')
+    else
+        disp('3.FootPres数据时间截取完成！')
+        save(NewPath,'FootPres','-append');                  %存储
+        DataPrepare_PlotData_TimeCuted(FootPres,3);          %绘制
+    end
+end    
+%4. UWB数据
+ if exist('UWB','var')   
+    UWB = DataPrepare_IMUData_TimeAlignmentUTC_Cut(UWB,200,TimeStart,TimeEnd);
+    if isempty(UWB) == 1
+        disp('4.**** UWB数据时间截取失败！****')
+    else
+        disp('4.UWB数据时间截取完成！')
+        save(NewPath,'UWB','-append');                  %存储
+        DataPrepare_PlotData_TimeCuted(UWB,4);          %绘制
+    end
+end 
+%5. 模块内GPS数据
+if exist('GPS','var')       
+    [L,m] = size(GPS);
+    First = 0; Second = L;
+    for i=1:L
+       if TimeStart <= GPS(i,1)
+           First = i;
+           break;
+       end
+    end
+    for i=1:L
+       if TimeEnd <= GPS(i,1)
+           Second = i;
+           break;
+       end
+    end       
+    GPS = GPS(First:Second,:);
+    disp('5.GPS数据时间截取完成！')
+    save(NewPath,'GPS','-append');                  %存储
+    DataPrepare_PlotData_TimeCuted(GPS,5);          %绘制
+end
+%6. 外部高精度GPS数据
+if exist('HighGPS','var')       
+    [L,m] = size(HighGPS);
+    First = 0; Second = L;
+    for i=1:L
+       if TimeStart <= HighGPS(i,1)
+           First = i;
+           break;
+       end
+    end
+    for i=1:L
+       if TimeEnd <= HighGPS(i,1)
+           Second = i;
+           break;
+       end
+    end       
+    HighGPS = HighGPS(First:Second,:);
+    disp('6.HighGPS数据时间截取完成！')
+    save(NewPath,'HighGPS','-append');                  %存储
+    DataPrepare_PlotData_TimeCuted(HighGPS,6);          %绘制
+end    
+    
+    
+  function DataPrepare_IMUData_TimeAlignmentSelf(mDataPath,HzIMU,HzMag,mTimeStart,mTimeEnd)
+% 数据时间的自对整包括以下内容
+%1.将输入的数据，先按照内部时钟(从0开始)，进行采样间隔对整，IMU和Mag的采样间隔不一样
+%2.将UWB的数据进行插值对齐
+%3.然后再按照设定的时间段，进行数据截取 
+
+HzIMU = 200;
+HzMag = 100;
+%% 1.时间对整处理
+%采样间隔
+DeltaT_IMU = 1/HzIMU;
+DeltaT_Mag = 1/HzMag;
+
+%读取数据
+load(mDataPath);
+% 1.1 处理IMU数据
+if exist('IMU','var')
+    [L,n] = size(IMU);
+    %先判断IMU是否丢数
+    j = 1;    
+    mLoseRecord=[0,0];
+    mLoseTime = 0;
+    for i=1:L-1
+        tNumber = round((IMU(i+1,1)-IMU(i,1))/DeltaT_IMU)-1;
+        if tNumber > 0            
+            mLoseRecord(j,1) = i+1;
+            mLoseRecord(j,2) = tNumber;
+            j = j+1;
+            mLoseTime = mLoseTime+1;
+        end
+    end    
+    
+    %丢数，进行插值
+    mStartTime = round(IMU(1,1)/DeltaT_IMU)*DeltaT_IMU;
+    if mLoseTime > 0
+        IMUNew = zeros(L+sum(mLoseRecord(:,2)),n);
+        if exist('FootPres','var')
+            [k,m] = size(FootPres);
+            FootPresNew = zeros(L+sum(mLoseRecord(:,2)),m);
+        end
+        j=1;
+        mAddNumber = 0;
+        for i=1:L
+            if i == mLoseRecord(j,1)
+                % 按照缺的个数插值！
+                for k=1:mLoseRecord(j,2)
+                   %插值！ 
+                   % IMUNew(i+mAddNumber,:) 
+                   IMUNew(i+mAddNumber,1) = mStartTime + (i+mAddNumber-1)*DeltaT_IMU;
+                   if exist('FootPres','var')
+                        %插值！ 
+                        % FootPresNew(i+mAddNumber,:) 
+                        FootPresNew(i+mAddNumber,1) = mStartTime + (i+mAddNumber-1)*DeltaT_IMU;
+                    end
+                   mAddNumber = mAddNumber+1;
+                end                
+                %插完后，正常赋值                
+                IMUNew(i+mAddNumber,:) = IMU(i,:);
+                IMUNew(i+mAddNumber,1) = mStartTime + (i+mAddNumber-1)*DeltaT_IMU;
+                if exist('FootPres','var')
+                    FootPresNew(i+mAddNumber,:) = FootPres(i,:);
+                    FootPresNew(i+mAddNumber,1) = mStartTime + (i+mAddNumber-1)*DeltaT_IMU;
+                end                
+                if j < mLoseTime
+                    j=j+1;
+                end
+            else
+               % 正常赋值               
+               IMUNew(i+mAddNumber,:) = IMU(i,:);
+               IMUNew(i+mAddNumber,1) = mStartTime + (i+mAddNumber-1)*DeltaT_IMU;
+               if exist('FootPres','var')
+                    FootPresNew(i+mAddNumber,:) = FootPres(i,:);
+                    FootPresNew(i+mAddNumber,1) = mStartTime + (i+mAddNumber-1)*DeltaT_IMU;
+               end 
+            end        
+        end
+    else
+    %否则，从开始时间按照等间隔进行时间对齐
+        IMUNew = zeros(L,n);
+        for i = 1:L
+            IMUNew(i,:) = IMU(i,:);
+            IMUNew(i,1) = mStartTime + (i-1)*DeltaT_IMU;            
+        end  
+        if exist('FootPres','var') 
+            [k,m] = size(FootPres);
+            FootPresNew = zeros(k,m);
+            for i = 1:k
+                FootPresNew(i,:) = FootPres(i,:);
+                FootPresNew(i,1) = mStartTime + (i-1)*DeltaT_IMU;            
+            end             
+        end
+    end
+    IMU = IMUNew; 
+    save(mDataPath,'IMU','-append');
+    if exist('FootPres','var')     
+        FootPres = FootPresNew;
+        save(mDataPath,'FootPres','-append');
+    end
+end
+
+% 1.2 处理UWB数据  按照IMU的采样频率对整   
+if exist('UWB','var')
+    [L,n] = size(UWB);
+    %先判断IMU是否丢数
+    j = 1;    
+    mLoseRecord=[0,0];
+    mLoseTime = 0;
+    for i=1:L-1
+        tNumber = round((UWB(i+1,1)-UWB(i,1))/DeltaT_IMU)-1;
+        if tNumber > 0            
+            mLoseRecord(j,1) = i+1;
+            mLoseRecord(j,2) = tNumber;
+            j = j+1;
+            mLoseTime = mLoseTime+1;
+        end
+    end    
+    
+    %丢数，进行插值
+    mStartTime = round(UWB(1,1)/DeltaT_IMU)*DeltaT_IMU;
+    if mLoseTime > 0
+        UWBNew = zeros(L+sum(mLoseRecord(:,2)),n);
+        j=1;
+        mAddNumber = 0;
+        for i=1:L
+            if i == mLoseRecord(j,1)
+                % 按照缺的个数插值！
+                for k=1:mLoseRecord(j,2)
+                   %插值！ 
+                   % UWBNew(i+mAddNumber,:) 
+                   UWBNew(i+mAddNumber,1) = mStartTime + (i+mAddNumber-1)*DeltaT_IMU;
+                   mAddNumber = mAddNumber+1;
+                end                
+                %插完后，正常赋值                
+                UWBNew(i+mAddNumber,:) = UWB(i,:);
+                UWBNew(i+mAddNumber,1) = mStartTime + (i+mAddNumber-1)*DeltaT_IMU;             
+                if j < mLoseTime
+                    j=j+1;
+                end
+            else
+               % 正常赋值               
+               UWBNew(i+mAddNumber,:) = UWB(i,:);
+               UWBNew(i+mAddNumber,1) = mStartTime + (i+mAddNumber-1)*DeltaT_IMU;
+            end        
+        end
+    else
+    %否则，从开始时间按照等间隔进行时间对齐
+        UWBNew = zeros(L,n);
+        for i = 1:L
+            UWBNew(i,:) = UWB(i,:);
+            UWBNew(i,1) = mStartTime + (i-1)*DeltaT_IMU;            
+        end  
+    end
+    UWB = UWBNew; 
+    save(mDataPath,'UWB','-append');
+end
+
+% 1.3 处理Magnetic数据   
+if exist('Magnetic','var')
+    [L,n] = size(Magnetic);
+    %先判断IMU是否丢数
+    j = 1;    
+    mLoseRecord=[0,0];
+    mLoseTime = 0;
+    for i=1:L-1
+        tNumber = round((Magnetic(i+1,1)-Magnetic(i,1))/DeltaT_Mag)-1;
+        if tNumber > 0            
+            mLoseRecord(j,1) = i+1;
+            mLoseRecord(j,2) = tNumber;
+            j = j+1;
+            mLoseTime = mLoseTime+1;
+        end
+    end    
+    
+    %丢数，进行插值
+    mStartTime = round(Magnetic(1,1)/DeltaT_Mag)*DeltaT_Mag;
+    if mLoseTime > 0
+        MagneticNew = zeros(L+sum(mLoseRecord(:,2)),n);
+        j=1;
+        mAddNumber = 0;
+        for i=1:L
+            if i == mLoseRecord(j,1)
+                % 按照缺的个数插值！
+                for k=1:mLoseRecord(j,2)
+                   %插值！ 
+                   % MagneticNew(i+mAddNumber,:) 
+                   MagneticNew(i+mAddNumber,1) = mStartTime + (i+mAddNumber-1)*DeltaT_Mag;
+                   mAddNumber = mAddNumber+1;
+                end                
+                %插完后，正常赋值                
+                MagneticNew(i+mAddNumber,:) = Magnetic(i,:);
+                MagneticNew(i+mAddNumber,1) = mStartTime + (i+mAddNumber-1)*DeltaT_Mag;             
+                if j < mLoseTime
+                    j=j+1;
+                end
+            else
+               % 正常赋值               
+               MagneticNew(i+mAddNumber,:) = Magnetic(i,:);
+               MagneticNew(i+mAddNumber,1) = mStartTime + (i+mAddNumber-1)*DeltaT_Mag;
+            end        
+        end
+    else
+    %否则，从开始时间按照等间隔进行时间对齐
+        MagneticNew = zeros(L,n);
+        for i = 1:L
+            MagneticNew(i,:) = Magnetic(i,:);
+            MagneticNew(i,1) = mStartTime + (i-1)*DeltaT_Mag;            
+        end  
+    end
+    Magnetic = MagneticNew; 
+    save(mDataPath,'Magnetic','-append');
+end
+
+
+
+
+
+
+
+
+
+
 
 
 
