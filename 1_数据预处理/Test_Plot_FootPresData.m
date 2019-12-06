@@ -106,30 +106,6 @@ legend('脚跟内侧','脚跟外侧','脚掌内侧','脚掌外侧','加计Z','陀螺X');
 
 
 %% 步态分析 利用去过毛刺的数据 试验 Data_Foot_Press
-[n,m] = size(Data_Foot_Press);
-% 1. 先获取前脚掌和后脚跟的压力数据
-% 这里设定 步态分析的起始时间和结束时间  也就是IMU惯导解算的起始时间和结束时间
-% 这里可以设计成三个参数，一个是启动时间，一个是静止结束时间，一个是导航结束时间
-StartNumber = 84850; EndNumber = 224740; Number = EndNumber-StartNumber+1;
-Foot_Press_front = zeros(Number,2);  
-Foot_Press_back = zeros(Number,2);  
-Foot_Press_back(:,1) = Data_Foot_Press(StartNumber:EndNumber,1);
-Foot_Press_front(:,1) = Data_Foot_Press(StartNumber:EndNumber,1);
-Foot_Press_back(:,2) = Data_Foot_Press(StartNumber:EndNumber,2)+Data_Foot_Press(StartNumber:EndNumber,3);
-Foot_Press_front(:,2) = Data_Foot_Press(StartNumber:EndNumber,4)+Data_Foot_Press(StartNumber:EndNumber,5);
-
-figure;
-plot(Foot_Press_front(:,1),Foot_Press_front(:,2),'k');  %足底压力x
-hold on; plot(Foot_Press_back(:,1),Foot_Press_back(:,2),'g');
-hold on;plot(IMU(StartNumber:EndNumber,1),IMU(StartNumber:EndNumber,4)*100,'-.');  %加计
-hold on;plot(IMU(StartNumber:EndNumber,1),IMU(StartNumber:EndNumber,5)*500,'r-.');  %陀螺
-legend('前脚掌','后脚跟','加计Z','陀螺X');
-grid on;
-
-% 先查找
-
-
-
 
 
 
