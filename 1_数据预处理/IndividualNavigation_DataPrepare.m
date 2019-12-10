@@ -1,15 +1,15 @@
 function varargout = IndividualNavigation_DataPrepare(varargin)
-% INDIVIDUALNAVIGATION_DATAPREPARE MATLAB code for IndividualNavigation_DataPrepare.fig
-%      INDIVIDUALNAVIGATION_DATAPREPARE, by itself, creates a new INDIVIDUALNAVIGATION_DATAPREPARE or raises the existing
+% IndividualNavigation_DataPrepare MATLAB code for IndividualNavigation_DataPrepare.fig
+%      IndividualNavigation_DataPrepare, by itself, creates a new IndividualNavigation_DataPrepare or raises the existing
 %      singleton*.
 %
-%      H = INDIVIDUALNAVIGATION_DATAPREPARE returns the handle to a new INDIVIDUALNAVIGATION_DATAPREPARE or the handle to
+%      H = IndividualNavigation_DataPrepare returns the handle to a new IndividualNavigation_DataPrepare or the handle to
 %      the existing singleton*.
 %
-%      INDIVIDUALNAVIGATION_DATAPREPARE('CALLBACK',hObject,eventData,handles,...) calls the local
-%      function named CALLBACK in INDIVIDUALNAVIGATION_DATAPREPARE.M with the given input arguments.
+%      IndividualNavigation_DataPrepare('CALLBACK',hObject,eventData,handles,...) calls the local
+%      function named CALLBACK in IndividualNavigation_DataPrepare.M with the given input arguments.
 %
-%      INDIVIDUALNAVIGATION_DATAPREPARE('Property','Value',...) creates a new INDIVIDUALNAVIGATION_DATAPREPARE or raises the
+%      IndividualNavigation_DataPrepare('Property','Value',...) creates a new IndividualNavigation_DataPrepare or raises the
 %      existing singleton*.  Starting from the left, property value pairs are
 %      applied to the GUI before IndividualNavigation_DataPrepare_OpeningFcn gets called.  An
 %      unrecognized property name or invalid value makes property application
@@ -22,7 +22,7 @@ function varargout = IndividualNavigation_DataPrepare(varargin)
 
 % Edit the above text to modify the response to help IndividualNavigation_DataPrepare
 
-% Last Modified by GUIDE v2.5 03-Dec-2019 00:11:40
+% Last Modified by GUIDE v2.5 10-Dec-2019 20:21:25
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -1548,11 +1548,8 @@ end
 
 
 
-
-
-
-
-
-
-
-
+% --- Executes during object creation, after setting all properties.
+function figure1_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called

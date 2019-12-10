@@ -261,8 +261,8 @@ end
 figure;
 plot(FootPres_Pa_back(:,1),FootPres_Pa_back(:,2),'k');            %足底压力x
 hold on; plot(FootPres_Pa_front(:,1),FootPres_Pa_front(:,2),'g');
-hold on;plot(FootPreState_back(:,1),FootPreState_back(:,2)*1000,'b.-');
-hold on;plot(FootPreState_front(:,1),FootPreState_front(:,2)*1500,'b.-');
+hold on;plot(FootPreState_back(:,1),FootPreState_back(:,2),'b.-');
+hold on;plot(FootPreState_front(:,1),FootPreState_front(:,2),'b.-');
 title('脚底压力状态 State');
 grid on;
 hold on;plot(IMU(:,1),IMU(:,4)*100,'-.');  %加计
@@ -281,20 +281,13 @@ while i<n
     %开头
     if i == 1
         while (FootPreState_back(i,2)+FootPreState_front(i,2))>0
-            FootPre_State(i,2) = 1;
+            FootPre_State(i,2) = 3;
             i = i+1;
         end
     end
-    if FootPreState_back(i,2) == 2
-        mBegin = 1;
-        mBegin_Serial = i;
-    end
     
-    if (FootPreState_front(i,2) == 2)&&(mBegin == 1)
-        FootPre_State(mBegin_Serial:i,2) = 1;
-        mBegin = 0;
-        mBegin_Serial = 0;
-    end       
+    
+    
 end
 
 figure;
