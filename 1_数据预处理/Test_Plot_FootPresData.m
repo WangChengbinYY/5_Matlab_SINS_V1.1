@@ -1,111 +1,222 @@
-%% 时间对齐后，绘制足底压力传感器和陀螺 加计数据，对照显示
+%% 0 输入为压力传感器的原始数据  FootPres
+% 时间对齐后，绘制足底压力传感器和陀螺 加计数据，对照显示
 %  压力传感器顺序'脚跟内侧6','脚跟外侧7','脚掌内侧5','脚掌外侧2'
-
 %原始压力信息的比较，此时压力数值代表的还是电压
+clear all;
+load('E:\ADIS_L_26605_27308.mat');
 figure;
 plot(FootPres(:,1),FootPres(:,2),'k');  %足底压力x
 hold on; plot(FootPres(:,1),FootPres(:,3),'r');
 hold on; plot(FootPres(:,1),FootPres(:,4),'g');
 hold on; plot(FootPres(:,1),FootPres(:,5),'b');
-xlabel('\it t \rm / s');       
-title('脚底压力+陀螺X+加速度计Z');
-grid on;
 hold on;plot(IMU(:,1),IMU(:,4)*10+990,'-.');  %加计
 hold on;plot(IMU(:,1),IMU(:,5)*50+1000,'r-.');  %陀螺
+grid on;
 legend('脚跟内侧','脚跟外侧','脚掌内侧','脚掌外侧','加计Z','陀螺X');
+xlabel('\it t \rm / s');       
+title('压力传感器原始数据');
 
-
-%% 对压力原始数据进行 电压——压力转化
+%% 一、对压力原始数据进行处理 
+%   脚静止，有压力，电阻小，电压小
+%   脚运动，无压力，电阻大，电压大
 % 1. FootPres_Limit 先去掉毛刺   880 对应3.0938V 对应61K欧 对应 24g  去掉原始数据最上面的毛刺和数据回跳
 [n,m] = size(FootPres);
 FootPres_Limit = FootPres;
 for j = 2:5
     for i = 1:n
-        if FootPres_Limit(i,j) > 880
-            FootPres_Limit(i,j) = 880;
-        end
-%         if FootPres_Limit(i,j) < 200
-%             FootPres_Limit(i,j) = 200;
-%         end        
+        if FootPres_Limit(i,j) > 900
+            FootPres_Limit(i,j) = 900;
+        end   
     end
 end
-% 2. Data_Foot_Press 转化为压力值！
-Data_Foot_Press = zeros(n,5);       %对应的压力数据   将电压转化为电阻  再将电阻转化为压力值
-Data_Foot_Press(:,1) = FootPres_Limit(:,1);
-% 拟合 压力(Y/g)—电阻(X/kR) 曲线
-    %Temp_X = [50.00,30.30,20.80,14.20,9.18,6.92,5.85,5.00,4.36,4.02,3.43,3.28,3.16,3.05,2.91,2.78,2.71,2.61,2.53,2.49,2.45,2.42,2.37]';
-    %Temp_Y = [300,500,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500,6000,6500,7000,7500,8000,8500,9000,9500,10000,10500,11000]';
-    %用指数曲线拟合 参数如下：  f(x) = a*exp(b*x) + c*exp(d*x)
-       a = 2.181e+05;
-       b = -1.474;
-       c = 5077;
-       d = -0.08735;
-       R1 = 10;
-Temp_Rx = zeros(n,5);       
-Temp_Vx = zeros(n,5);         
-for i=2:5
-    for j=1:n
-        %将输出转化为 电压 Vx = Data_Foot .* (3.6/1024.0) 单位 V
-        Temp_Vx(j,i) = FootPres_Limit(j,i)*3.6/1024.0;
-        %将电压转化为电阻 R1 = 10K  R2 = 压力阻值 = Vx*R1/(3.6-Vx) 单位kR
-        Temp_Rx(j,i) = Temp_Vx(j,i)*R1/(3.6 - Temp_Vx(j,i));
-        %将电阻转化为压力值
-        Data_Foot_Press(j,i) = a*exp(b*Temp_Rx(j,i)) + c*exp(d*Temp_Rx(j,i));
-    end
-end     
-figure;
-plot(Data_Foot_Press(:,1),Data_Foot_Press(:,2),'k');  %足底压力x
-hold on; plot(Data_Foot_Press(:,1),Data_Foot_Press(:,3),'r');
-hold on; plot(Data_Foot_Press(:,1),Data_Foot_Press(:,4),'g');
-hold on; plot(Data_Foot_Press(:,1),Data_Foot_Press(:,5),'b');
-xlabel('\it t \rm / s');       
-title('脚底压力');
-grid on;
-hold on;plot(IMU(:,1),IMU(:,4)*100,'-.');  %加计
-hold on;plot(IMU(:,1),IMU(:,5)*500,'r-.');  %陀螺
-legend('脚跟内侧','脚跟外侧','脚掌内侧','脚掌外侧','加计Z','陀螺X');
-
-
-
-%% 对压力值进行波形整型 便于好看
-% 拟合曲线
-x = [500,1000,2000,5000, 10000,15000,20000];
-z = [300,400, 450, 500,  600,  800,  1000];
-for i = 1:7
-    y(1,i) = z(1,i)/x(1,i);
-end
-% p1 = 1443;  p2 = -6.565;
-% % q1 = 1904;  q2 = 6.311;
-% f_y = (p1*f_x+p2)/(f_x^2+q1*f_x+q2);
-a = 39.16; b = -0.6657; c = -0.0169;
-f_y = a*f_x^b+c;
-
-% FootTest 将原始压力数据进行压缩 去掉上面的尖峰！
-FootTest = Data_Foot_Press;
+% 翻转  波动代表压力
 for j = 2:5
     for i = 1:n
-        if(FootTest(i,j)) > 4500
-            f_x = FootTest(i,j) - 4500;
-%             f_y = (p1*f_x+p2)/(f_x^2+q1*f_x+q2)*f_x;
-            f_y = (a*f_x^b+c)*f_x;
-            FootTest(i,j) = 4500 + f_y;
-        end
+        FootPres_Limit(i,j) = (-1)*FootPres_Limit(i,j)+900;   
     end
 end
 figure;
-plot(FootTest(:,1),FootTest(:,2),'k');  %足底压力x
-hold on; plot(FootTest(:,1),FootTest(:,3),'r');
-hold on; plot(FootTest(:,1),FootTest(:,4),'g');
-hold on; plot(FootTest(:,1),FootTest(:,5),'b');
+plot(FootPres_Limit(:,1),FootPres_Limit(:,2)+FootPres_Limit(:,3),'k');  %足底压力x
+hold on; plot(FootPres_Limit(:,1),FootPres_Limit(:,4)+FootPres_Limit(:,5),'g');
+hold on;plot(IMU(:,1),IMU(:,4)*10,'-.');  %加计
+hold on;plot(IMU(:,1),IMU(:,5)*50,'r-.');  %陀螺
+grid on;
+legend('脚跟压力','脚掌压力','加计Z','陀螺X');
 xlabel('\it t \rm / s');       
-title('脚底压力');
+title('压力传感器原始数据');
+
+
+%% 二、对转化后的压力 FootPres_Pa 进行步态判断 
+% 1. 先获取前脚掌和后脚跟的压力数据 分别将前 后 的两个点数据求和
+% 这里设定 步态分析的起始时间和结束时间  也就是IMU惯导解算的起始时间和结束时间
+% 这里可以设计成三个参数，一个是启动时间，一个是静止结束时间，一个是导航结束时间
+FootPres_Pa = FootPres_Limit;
+[n,m] = size(FootPres_Pa);
+FootPres_Pa_front = zeros(n,2);  
+FootPres_Pa_back = zeros(n,2);  
+FootPres_Pa_back(:,1) = FootPres_Pa(:,1);
+FootPres_Pa_front(:,1) = FootPres_Pa(:,1);
+FootPres_Pa_back(:,2) = FootPres_Pa(:,2)+FootPres_Pa(:,3);
+FootPres_Pa_front(:,2) = FootPres_Pa(:,4)+FootPres_Pa(:,5);
+
+% 2. 先处理后脚跟的数据，因为后脚跟行走时先落地，并且冲击最大
+%   一般开机，人都是在静止状态的，所以可以依据初始的第一个压力值判断是否在静止状态
+[n,m] = size(FootPres_Pa_back);
+% 处理后脚跟的状态
+FootPreState_Back = zeros(n,2);
+FootPreState_Back(:,1) = FootPres_Pa_back(:,1);
+i = 0;
+while i < n
+    i = i+1;
+    if i == 1
+        %起始阶段 的判断
+        if FootPres_Pa_back(1,2) >= 100
+            %起始静止状态
+            FootPreState_Back(1,2) = 1;
+            i = i+1;
+            while FootPres_Pa_back(i,2) >= 100
+                FootPreState_Back(i,2) = 1;
+                i = i+1;
+            end
+                FootPreState_Back(i,2) = 0;
+        else
+            %起始运动状态
+            FootPreState_Back(1,2) = 0;
+             i = i+1;
+            while FootPres_Pa_back(i,2) < 100
+                FootPreState_Back(i,2) = 0;
+                i = i+1;
+            end
+                FootPreState_Back(i,2) = 1;         
+        end
+    end
+    if (FootPreState_Back(i-1,2) == 0) && (FootPres_Pa_back(i,2) > 100)
+        %从运动 进入 静止
+        FootPreState_Back(i,2) = 1;
+        continue;
+    end        
+    if (FootPreState_Back(i-1,2) == 1) && (FootPres_Pa_back(i,2) < 100)
+        %从静止 进入 运动
+        FootPreState_Back(i,2) = 0;  
+        continue;
+    end    
+    FootPreState_Back(i,2) = FootPreState_Back(i-1,2);
+end
+
+% 对处理结果进行纠偏 纠正跳点
+TStartSerial = 1;
+StateNum = 1;
+i = 1;
+while i < n
+    i = i+1;
+    if FootPreState_Back(i,2) ~= FootPreState_Back(i-1,2)
+        if StateNum >= 10
+            %正常变换
+            TStartSerial = i;
+            StateNum = 1;
+        else
+            %有跳点
+            FootPreState_Back(TStartSerial:i-1,2) = FootPreState_Back(TStartSerial-1,2);
+            StateNum = StateNum+10;
+        end
+    else
+        StateNum = StateNum + 1;
+    end
+end
+
+figure;
+plot(FootPres_Pa_back(:,1),FootPres_Pa_back(:,2),'k');  %足底压力x
+hold on; plot(FootPres_Pa_front(:,1),FootPres_Pa_front(:,2),'g');
+hold on;plot(FootPreState_Back(:,1),FootPreState_Back(:,2).*1500,'b');
+title('后脚跟压力状态State');
+grid on;
+legend('后脚跟','前脚掌','后脚跟判断');
+hold on;plot(IMU(:,1),IMU(:,4)*100,'-.');  %加计
+hold on;plot(IMU(:,1),IMU(:,5)*500,'r-.');  %陀螺
+clear i m n Number StateNum TStartSerial;
+
+% 3. 同上处理前脚掌数据
+[n,m] = size(FootPres_Pa_front);
+% 处理前脚掌的状态
+FootPreState_front = zeros(n,2);
+FootPreState_front(:,1) = FootPres_Pa_front(:,1);
+i = 0;
+while i < n
+    i = i+1;
+    if i == 1
+        %起始阶段 的判断
+        if FootPres_Pa_front(1,2) >= 100
+            %起始静止状态
+            FootPreState_front(1,2) = 1;
+            i = i+1;
+            while FootPres_Pa_front(i,2) >= 100
+                FootPreState_front(i,2) = 1;
+                i = i+1;
+            end
+                FootPreState_front(i,2) = 0;
+        else
+            %起始运动状态
+            FootPreState_front(1,2) = 0;
+             i = i+1;
+            while FootPres_Pa_front(i,2) < 100
+                FootPreState_front(i,2) = 0;
+                i = i+1;
+            end
+                FootPreState_front(i,2) = 1;          
+        end
+    end
+    if (FootPreState_front(i-1,2) == 0) && (FootPres_Pa_front(i,2) > 100)
+        %从运动 进入 静止
+        FootPreState_front(i,2) = 1;
+        continue;
+    end        
+    if (FootPreState_front(i-1,2) == 1) && (FootPres_Pa_front(i,2) < 100)
+        %从静止 进入 运动
+        FootPreState_front(i,2) = 0;  
+        continue;
+    end    
+    FootPreState_front(i,2) = FootPreState_front(i-1,2);
+end
+
+% 对处理结果进行纠偏 纠正跳点
+TStartSerial = 1;
+StateNum = 1;
+i = 1;
+while i < n
+    i = i+1;
+    if FootPreState_front(i,2) ~= FootPreState_front(i-1,2)
+        if StateNum >= 10
+            %正常变换
+            TStartSerial = i;
+            StateNum = 1;
+        else
+            %有跳点
+            FootPreState_front(TStartSerial:i-1,2) = FootPreState_front(TStartSerial-1,2);
+            StateNum = StateNum+10;
+        end
+    else
+        StateNum = StateNum + 1;
+    end
+end
+
+figure;
+plot(FootPres_Pa_back(:,1),FootPres_Pa_back(:,2),'k');            %足底压力x
+hold on; plot(FootPres_Pa_front(:,1),FootPres_Pa_front(:,2),'g');
+hold on;plot(FootPreState_front(:,1),FootPreState_front(:,2).*1400,'b');
+hold on;plot(FootPreState_Back(:,1),FootPreState_Back(:,2).*1500,'b.-');
+title('脚底压力状态 State');
 grid on;
 hold on;plot(IMU(:,1),IMU(:,4)*100,'-.');  %加计
 hold on;plot(IMU(:,1),IMU(:,5)*500,'r-.');  %陀螺
-legend('脚跟内侧','脚跟外侧','脚掌内侧','脚掌外侧','加计Z','陀螺X');
+legend('后脚跟','前脚掌','前脚掌判断','后脚跟判断');
+clear i m n StateNum TStartSerial;
+
+%% 三、 利用前后压力判断状态 进行 脚的步态判断
+% 1.利用 后脚跟的状态 FootPreState_front 寻找 每个接地过程中的压力极值
 
 
-%% 步态分析 利用去过毛刺的数据 试验 Data_Foot_Press
+
+
 
 
 

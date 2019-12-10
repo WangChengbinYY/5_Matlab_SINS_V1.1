@@ -26,7 +26,9 @@ grid on;
 % 处理后脚跟的状态
 Foot_Back_State = zeros(n,2);
 Foot_Back_State(:,1) = Foot_Press_back(:,1);
-for i = 1:n
+i = 0;
+while i < n
+    i = i+1;
     if i == 1
         %起始阶段 的判断
         if Foot_Press_back(1,2) >= 100
@@ -65,7 +67,9 @@ end
 % 对处理结果进行纠偏 纠正跳点
 TStartSerial = 1;
 StateNum = 1;
-for i = 2:n
+i = 1;
+while i < n
+    i = i+1;
     if Foot_Back_State(i,2) ~= Foot_Back_State(i-1,2)
         if StateNum >= 10
             %正常变换
@@ -84,9 +88,9 @@ end
 figure;
 plot(Foot_Press_front(:,1),Foot_Press_front(:,2),'k');  %足底压力x
 hold on; plot(Foot_Press_back(:,1),Foot_Press_back(:,2),'g');
-legend('前脚掌','后脚跟');
 hold on;plot(Foot_Back_State(:,1),Foot_Back_State(:,2).*1500,'b');
 grid on;
+legend('前脚掌','后脚跟','后脚跟判断');
 % hold on;plot(IMU(StartNumber:EndNumber,1),IMU(StartNumber:EndNumber,4)*100,'-.');  %加计
 % hold on;plot(IMU(StartNumber:EndNumber,1),IMU(StartNumber:EndNumber,5)*500,'r-.');  %陀螺
 % legend('前脚掌','后脚跟','加计Z','陀螺X');
@@ -97,7 +101,9 @@ grid on;
 % 处理后脚跟的状态
 Foot_front_State = zeros(n,2);
 Foot_front_State(:,1) = Foot_Press_front(:,1);
-for i = 1:n
+i = 0;
+while i < n
+    i = i+1;
     if i == 1
         %起始阶段 的判断
         if Foot_Press_front(1,2) >= 100
@@ -136,7 +142,9 @@ end
 % 对处理结果进行纠偏 纠正跳点
 TStartSerial = 1;
 StateNum = 1;
-for i = 2:n
+i = 1;
+while i < n
+    i = i+1;
     if Foot_front_State(i,2) ~= Foot_front_State(i-1,2)
         if StateNum >= 10
             %正常变换
@@ -159,13 +167,14 @@ legend('前脚掌','后脚跟');
 hold on;plot(Foot_front_State(:,1),Foot_front_State(:,2).*1400,'b');
 hold on;plot(Foot_Back_State(:,1),Foot_Back_State(:,2).*1500,'b');
 grid on;
+legend('前脚掌','后脚跟','后脚跟判断','前脚掌判断');
 hold on;plot(IMU(StartNumber:EndNumber,1),IMU(StartNumber:EndNumber,4)*100,'-.');  %加计
 hold on;plot(IMU(StartNumber:EndNumber,1),IMU(StartNumber:EndNumber,5)*500,'r-.');  %陀螺
 
 
 % 3. 对脚掌和脚跟的状态进行综合判断 步态
 % 3.1 先对脚跟 进行状态的聚类，提取出有压力的起始和终止点，以及对应时间段内的峰值点
-[n,m] = size(Data_Foot_Press);
+[n,m] = size(Foot_Back_State);
 % 起始点 结束点 峰值点
 j=1;
 RecoardBack = [];
@@ -187,6 +196,9 @@ for i = 1:n
         j = j+1;
     end        
 end
+
+
+
 
 [n,m] = size(Data_Foot_Press);
 FootPres_State = zeros(n,2);
