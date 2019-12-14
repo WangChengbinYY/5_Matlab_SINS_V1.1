@@ -22,7 +22,7 @@ function varargout = IndividualNavigation_DataPrepare(varargin)
 
 % Edit the above text to modify the response to help IndividualNavigation_DataPrepare
 
-% Last Modified by GUIDE v2.5 10-Dec-2019 20:21:25
+% Last Modified by GUIDE v2.5 10-Dec-2019 20:45:22
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -404,16 +404,6 @@ if Choose_Time == 2
     disp('****************************************************');
 end
 
-% --- Executes on button press in pushbutton4.
-function pushbutton4_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton4 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-%% 1. 利用压力传感器和IMU数据进行脚步状态判断
-
-
-%% 2. UWB 的数据低通滤波  还可以考虑 磁强计的数据低通滤波
 
 
 function edit2_Callback(hObject, eventdata, handles)
@@ -887,11 +877,10 @@ end
 
 
 
-function DataPrepare_PlotData_TimeCuted(mData,mChoose)
+function DataPrepare_PlotData_TimeCuted(mData,mData_Old,mChoose)
 % 对时间截取后的数据进行绘制，便于查看图形状态
 % 输入：mData 数据；mChoose 数据种类(1=IMU,2=Magnetic,3=FootPress,
 %   4=UWB,5=GPS,6=HighGPS,)；
-
 
 switch mChoose
     case 1
@@ -900,15 +889,22 @@ switch mChoose
         plot(mData(:,1),mData(:,2),'k');  %加计x
         hold on; plot(mData(:,1),mData(:,3),'r');
         hold on; plot(mData(:,1),mData(:,4),'g');
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,3),'k-.');  %加计x
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,4),'r-.');
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,5),'g-.');
         xlabel('\it t \rm / s');
         ylabel('\it m \rm / s2');
         title('加计输出');
         legend('x','y','z');
         grid on;
+        
         figure;
         plot(mData(:,1),mData(:,5),'k');  %陀螺x
         hold on; plot(mData(:,1),mData(:,6),'r');
         hold on; plot(mData(:,1),mData(:,7),'g');
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,6),'k-.');  %陀螺x
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,7),'r-.');
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,8),'g-.');
         xlabel('\it t \rm / s');
         ylabel('\it 弧度 \rm / s');
         title('陀螺输出');
@@ -920,6 +916,9 @@ switch mChoose
         plot(mData(:,1),mData(:,2),'k');  %磁强计x
         hold on; plot(mData(:,1),mData(:,3),'r');
         hold on; plot(mData(:,1),mData(:,4),'g');
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,3),'k-.');  %磁强计x
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,4),'r-.');
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,5),'g-.');
         xlabel('\it t \rm / s');
         ylabel('\it uT');
         title('磁强计输出');
@@ -932,6 +931,10 @@ switch mChoose
         hold on; plot(mData(:,1),mData(:,3),'r');
         hold on; plot(mData(:,1),mData(:,4),'g');
         hold on; plot(mData(:,1),mData(:,5),'b');
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,3),'k-.');  %足底压力x
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,4),'r-.');
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,5),'g-.');
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,6),'b-.');
         xlabel('\it t \rm / s');       
         title('脚底压力输出');
         legend('脚跟内侧','脚跟外侧','脚掌内侧','脚掌外侧');
@@ -940,6 +943,7 @@ switch mChoose
         %UWB输出
         figure;
         plot(mData(:,1),mData(:,2),'k');  %UWB
+        hold on; plot(mData_Old(:,1)+mData_Old(:,2)./1000,mData_Old(:,3),'k-.');  %UWB
         xlabel('\it t \rm / s');
         ylabel('\it m');        
         title('UWB测距');
@@ -1245,45 +1249,49 @@ tIndex = strfind(mDataPath,'.');
 NewPath = mDataPath(1:tIndex-1);
 NewPath = [NewPath,sprintf('_%d_%d',TimeStart,TimeEnd),'.mat'];
 %1.先截取IMU 并存储
+IMU_Old = IMU;
 IMU = DataPrepare_IMUData_TimeAlignmentUTC_Cut(IMU,200,TimeStart,TimeEnd);
 if isempty(IMU) == 1
     disp('1.**** IMU数据时间截取失败！****')
 else
     disp('1.IMU数据时间截取完成！')
     save(NewPath,'IMU');                        %存储截取后的新数据
-    DataPrepare_PlotData_TimeCuted(IMU,1);       %绘制
+    DataPrepare_PlotData_TimeCuted(IMU,IMU_Old,1);       %绘制
 end    
 %2. 磁强计数据
-if exist('Magnetic','var')   
+if exist('Magnetic','var') 
+    Magnetic_Old = Magnetic;
     Magnetic = DataPrepare_IMUData_TimeAlignmentUTC_Cut(Magnetic,100,TimeStart,TimeEnd);
     if isempty(Magnetic) == 1
         disp('2.**** Magnetic数据时间截取失败！****')
     else
         disp('2.Magnetic数据时间截取完成！')
         save(NewPath,'Magnetic','-append');                  %存储
-        DataPrepare_PlotData_TimeCuted(Magnetic,2);       %绘制
+        DataPrepare_PlotData_TimeCuted(Magnetic,Magnetic_Old,2);       %绘制
     end
 end   
 %3. 足底压力数据    
 if exist('FootPres','var')   
+    FootPres_Old = FootPres;
     FootPres = DataPrepare_IMUData_TimeAlignmentUTC_Cut(FootPres,200,TimeStart,TimeEnd);
     if isempty(FootPres) == 1
         disp('3.**** FootPres数据时间截取失败！****')
     else
         disp('3.FootPres数据时间截取完成！')
         save(NewPath,'FootPres','-append');                  %存储
-        DataPrepare_PlotData_TimeCuted(FootPres,3);          %绘制
+        DataPrepare_PlotData_TimeCuted(FootPres,FootPres_Old,3);          %绘制
     end
 end    
 %4. UWB数据
  if exist('UWB','var')   
-    UWB = DataPrepare_IMUData_TimeAlignmentUTC_Cut(UWB,200,TimeStart,TimeEnd);
+    UWB_Old = UWB;
+    UWB = DataPrepare_IMUData_TimeAlignmentUTC_Cut(UWB,100,TimeStart,TimeEnd);
     if isempty(UWB) == 1
         disp('4.**** UWB数据时间截取失败！****')
     else
         disp('4.UWB数据时间截取完成！')
         save(NewPath,'UWB','-append');                  %存储
-        DataPrepare_PlotData_TimeCuted(UWB,4);          %绘制
+        DataPrepare_PlotData_TimeCuted(UWB,UWB_Old,4);          %绘制
     end
 end 
 %5. 模块内GPS数据
@@ -1305,7 +1313,7 @@ if exist('GPS','var')
     GPS = GPS(First:Second,:);
     disp('5.GPS数据时间截取完成！')
     save(NewPath,'GPS','-append');                  %存储
-    DataPrepare_PlotData_TimeCuted(GPS,5);          %绘制
+    DataPrepare_PlotData_TimeCuted(GPS,GPS,5);          %绘制
 end
 %6. 外部高精度GPS数据
 if exist('HighGPS','var')       
@@ -1326,7 +1334,7 @@ if exist('HighGPS','var')
     HighGPS = HighGPS(First:Second,:);
     disp('6.HighGPS数据时间截取完成！')
     save(NewPath,'HighGPS','-append');                  %存储
-    DataPrepare_PlotData_TimeCuted(HighGPS,6);          %绘制
+    DataPrepare_PlotData_TimeCuted(HighGPS,HighGPS,6);          %绘制
 end    
     
     
@@ -1545,11 +1553,318 @@ end
 
 
 
-
-
-
-% --- Executes during object creation, after setting all properties.
-function figure1_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to figure1 (see GCBO)
+% --- Executes on button press in pushbutton4.
+function pushbutton4_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton4 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
+% handles    structure with handles and user data (see GUIDATA)
+disp('----------------------------------------------------');
+disp('*------------------步态识别开始处理-----------------*');
+[FootFileName,FootFilePath] = uigetfile('*.mat');
+if isequal(FootFileName,0)
+    disp('*-----------数据路径为空，无法读取数据！------------*');    
+    disp('----------------------------------------------------');
+    return;
+else  
+    load([FootFilePath,FootFileName]);    
+end
+    
+%% 一、对压力原始数据进行处理 
+%   脚静止，有压力，电阻小，电压小
+%   脚运动，无压力，电阻大，电压大
+% 1. FootPres_Limit 先去掉毛刺   880 对应3.0938V 对应61K欧 对应 24g  去掉原始数据最上面的毛刺和数据回跳
+[n,m] = size(FootPres);
+FootPres_Limit = FootPres;
+for j = 2:5
+    for i = 1:n
+        if FootPres_Limit(i,j) > 900
+            FootPres_Limit(i,j) = 900;
+        end   
+    end
+end
+% 翻转  波动代表压力
+for j = 2:5
+    for i = 1:n
+        FootPres_Limit(i,j) = (-1)*FootPres_Limit(i,j)+900;   
+    end
+end
+figure;
+plot(FootPres_Limit(:,1),FootPres_Limit(:,2)+FootPres_Limit(:,3),'k');  %足底压力x
+hold on; plot(FootPres_Limit(:,1),FootPres_Limit(:,4)+FootPres_Limit(:,5),'g');
+hold on;plot(IMU(:,1),IMU(:,4)*10,'-.');  %加计
+hold on;plot(IMU(:,1),IMU(:,5)*50,'r-.');  %陀螺
+grid on;
+legend('脚跟压力','脚掌压力','加计Z*10','陀螺X*50');
+xlabel('\it t \rm / s');       
+title('压力传感器原始数据');
+
+
+%% 二、对转化后的压力 FootPres_Pa 进行步态判断 
+% 1. 先获取前脚掌和后脚跟的压力数据 分别将前 后 的两个点数据求和
+% 这里设定 步态分析的起始时间和结束时间  也就是IMU惯导解算的起始时间和结束时间
+% 这里可以设计成三个参数，一个是启动时间，一个是静止结束时间，一个是导航结束时间
+FootPres_Pa = FootPres_Limit;
+[n,m] = size(FootPres_Pa);
+FootPres_Pa_front = zeros(n,2);  
+FootPres_Pa_back = zeros(n,2);  
+FootPres_Pa_back(:,1) = FootPres_Pa(:,1);
+FootPres_Pa_front(:,1) = FootPres_Pa(:,1);
+FootPres_Pa_back(:,2) = FootPres_Pa(:,2)+FootPres_Pa(:,3);
+FootPres_Pa_front(:,2) = FootPres_Pa(:,4)+FootPres_Pa(:,5);
+
+% 2. 先处理后脚跟的数据，因为后脚跟行走时先落地，并且冲击最大
+%   一般开机，人都是在静止状态的，所以可以依据初始的第一个压力值判断是否在静止状态
+[n,m] = size(FootPres_Pa_back);
+% 处理后脚跟的状态
+FootPreState_back = zeros(n,2);
+FootPreState_back(:,1) = FootPres_Pa_back(:,1);
+i = 0;
+while i < n
+    i = i+1;
+    if i == 1
+        %起始阶段 的判断
+        if FootPres_Pa_back(1,2) >= 100
+            %起始静止状态
+            FootPreState_back(1,2) = 1;
+            i = i+1;
+            while FootPres_Pa_back(i,2) >= 100
+                FootPreState_back(i,2) = 1;
+                i = i+1;
+            end
+                FootPreState_back(i,2) = 0;
+        else
+            %起始运动状态
+            FootPreState_back(1,2) = 0;
+             i = i+1;
+            while FootPres_Pa_back(i,2) < 100
+                FootPreState_back(i,2) = 0;
+                i = i+1;
+            end
+                FootPreState_back(i,2) = 1;         
+        end
+    end
+    if (FootPreState_back(i-1,2) == 0) && (FootPres_Pa_back(i,2) > 100)
+        %从运动 进入 静止
+        FootPreState_back(i,2) = 1;
+        continue;
+    end        
+    if (FootPreState_back(i-1,2) == 1) && (FootPres_Pa_back(i,2) < 100)
+        %从静止 进入 运动
+        FootPreState_back(i,2) = 0;  
+        continue;
+    end    
+    FootPreState_back(i,2) = FootPreState_back(i-1,2);
+end
+
+% 对处理结果进行纠偏 纠正跳点
+TStartSerial = 1;
+StateNum = 1;
+i = 1;
+while i < n
+    i = i+1;
+    if FootPreState_back(i,2) ~= FootPreState_back(i-1,2)
+        if StateNum >= 10
+            %正常变换
+            TStartSerial = i;
+            StateNum = 1;
+        else
+            %有跳点
+            FootPreState_back(TStartSerial:i-1,2) = FootPreState_back(TStartSerial-1,2);
+            StateNum = StateNum+10;
+        end
+    else
+        StateNum = StateNum + 1;
+    end
+end
+
+% 3. 同上处理前脚掌数据
+[n,m] = size(FootPres_Pa_front);
+% 处理前脚掌的状态
+FootPreState_front = zeros(n,2);
+FootPreState_front(:,1) = FootPres_Pa_front(:,1);
+i = 0;
+while i < n
+    i = i+1;
+    if i == 1
+        %起始阶段 的判断
+        if FootPres_Pa_front(1,2) >= 100
+            %起始静止状态
+            FootPreState_front(1,2) = 1;
+            i = i+1;
+            while FootPres_Pa_front(i,2) >= 100
+                FootPreState_front(i,2) = 1;
+                i = i+1;
+            end
+                FootPreState_front(i,2) = 0;
+        else
+            %起始运动状态
+            FootPreState_front(1,2) = 0;
+             i = i+1;
+            while FootPres_Pa_front(i,2) < 100
+                FootPreState_front(i,2) = 0;
+                i = i+1;
+            end
+                FootPreState_front(i,2) = 1;          
+        end
+    end
+    if (FootPreState_front(i-1,2) == 0) && (FootPres_Pa_front(i,2) > 100)
+        %从运动 进入 静止
+        FootPreState_front(i,2) = 1;
+        continue;
+    end        
+    if (FootPreState_front(i-1,2) == 1) && (FootPres_Pa_front(i,2) < 100)
+        %从静止 进入 运动
+        FootPreState_front(i,2) = 0;  
+        continue;
+    end    
+    FootPreState_front(i,2) = FootPreState_front(i-1,2);
+end
+
+% 对处理结果进行纠偏 纠正跳点
+TStartSerial = 1;
+StateNum = 1;
+i = 1;
+while i < n
+    i = i+1;
+    if FootPreState_front(i,2) ~= FootPreState_front(i-1,2)
+        if StateNum >= 10
+            %正常变换
+            TStartSerial = i;
+            StateNum = 1;
+        else
+            %有跳点
+            FootPreState_front(TStartSerial:i-1,2) = FootPreState_front(TStartSerial-1,2);
+            StateNum = StateNum+10;
+        end
+    else
+        StateNum = StateNum + 1;
+    end
+end
+
+figure;
+plot(FootPres_Pa_back(:,1),FootPres_Pa_back(:,2),'k');            %足底压力x
+hold on; plot(FootPres_Pa_front(:,1),FootPres_Pa_front(:,2),'g');
+hold on;plot(FootPreState_front(:,1),FootPreState_front(:,2).*100,'b');
+hold on;plot(FootPreState_back(:,1),FootPreState_back(:,2).*150,'b.-');
+title('脚跟 脚掌 步态判断State');
+grid on;
+legend('后脚跟状态','前脚掌状态','前脚掌判断','后脚跟判断');
+clear i m n StateNum TStartSerial;
+
+%% 三、 利用前后压力判断状态 进行 脚的步态判断
+% 1.利用 后脚跟的状态 FootPreState_back 寻找 每个接地过程中的压力极值 FootPres_Pa_back
+[n,m] = size(FootPreState_back);
+mBegin = 0; mBegin_Serial = 0; 
+mEnd = 0;   mEnd_Serial = 0; 
+for i = 2:n
+    if (FootPreState_back(i-1,2) == 0)&&(FootPreState_back(i,2) == 1)
+        mBegin = 1;
+        mBegin_Serial = i;
+    end
+    if (mBegin == 1)&&(FootPreState_back(i-1,2) == 1)&&(FootPreState_back(i,2) == 0)
+        mEnd = 1;
+        mEnd_Serial = i;
+    end    
+    if (mBegin == 1)&&(mEnd == 1)   
+        if mEnd_Serial > mBegin_Serial
+            [mMax,mIndex] = max(FootPres_Pa_back(mBegin_Serial:mEnd_Serial,2));
+            FootPreState_back(mIndex+mBegin_Serial-1,2) = 2;
+        end
+        mBegin = 0;
+        mEnd = 0;        
+    end    
+end
+
+% 2.利用 前脚掌的状态 FootPreState_front 寻找 每个接地过程中的压力极值 FootPres_Pa_front
+[n,m] = size(FootPreState_front);
+mBegin = 0; mBegin_Serial = 0; 
+mEnd = 0;   mEnd_Serial = 0; 
+for i = 2:n
+    if (FootPreState_front(i-1,2) == 0)&&(FootPreState_front(i,2) == 1)
+        mBegin = 1;
+        mBegin_Serial = i;
+    end
+    if (mBegin == 1)&&(FootPreState_front(i-1,2) == 1)&&(FootPreState_front(i,2) == 0)
+        mEnd = 1;
+        mEnd_Serial = i;
+    end    
+    if (mBegin == 1)&&(mEnd == 1)   
+        if mEnd_Serial > mBegin_Serial
+            [mMax,mIndex] = max(FootPres_Pa_front(mBegin_Serial:mEnd_Serial,2));
+            FootPreState_front(mIndex+mBegin_Serial-1,2) = 2;
+        end
+        mBegin = 0;
+        mEnd = 0;        
+    end    
+end
+
+% figure;
+% plot(FootPres_Pa_back(:,1),FootPres_Pa_back(:,2),'k');            %足底压力x
+% hold on; plot(FootPres_Pa_front(:,1),FootPres_Pa_front(:,2),'g');
+% hold on;plot(FootPreState_back(:,1),FootPreState_back(:,2)*1000,'b.-');
+% hold on;plot(FootPreState_front(:,1),FootPreState_front(:,2)*1500,'b.-');
+% title('脚底压力状态 State');
+% grid on;
+% hold on;plot(IMU(:,1),IMU(:,4)*100,'-.');  %加计
+% hold on;plot(IMU(:,1),IMU(:,5)*500,'r-.');  %陀螺
+% legend('后脚跟','前脚掌','前脚掌判断','后脚跟判断');
+
+% 3.步态综合判断
+[n,m] = size(FootPreState_back);
+FootPres_State = zeros(n,2);
+FootPres_State(:,1) = FootPres(:,1);
+mBegin = 0; mBegin_Serial = 0; 
+mEnd = 0;   mEnd_Serial = 0; 
+i = 0;
+while i<n
+    i = i+1;
+    %开头
+    if i == 1
+        while (FootPreState_back(i,2)+FootPreState_front(i,2))>0
+            FootPres_State(i,2) = 1;
+            i = i+1;
+        end
+    end
+    if FootPreState_back(i,2) == 2
+        mBegin = 1;
+        mBegin_Serial = i;
+    end
+    
+    if (FootPreState_front(i,2) == 2)&&(mBegin == 1)
+        FootPres_State(mBegin_Serial:i,2) = 1;
+        mBegin = 0;
+        mBegin_Serial = 0;
+    end       
+    % 收尾工作
+    if (i == n)&&(FootPres_State(i,2) == 0)
+        j = n;
+        while ((FootPreState_back(j,2)+FootPreState_front(j,2))>0) && (FootPres_State(j,2) == 0)            
+            j = j -1;
+        end
+        if (n-j>100)
+            FootPres_State(j+100:n,2) = 1;
+        end
+    end    
+end
+
+figure;
+plot(FootPres_State(:,1),FootPres_State(:,2).*20,'b');        
+hold on;plot(IMU(:,1),IMU(:,4),'-.');  %加计
+hold on;plot(IMU(:,1),IMU(:,5),'r-.');  %陀螺
+legend('步态*20','加计Z','陀螺X');
+xlabel('\it t \rm / s');       
+title('行走步态判断(1静止，0运动)');
+grid on;
+
+save([FootFilePath,FootFileName],'FootPres_State','-append');
+
+disp('*----------------步态识别处理完成！-----------------*');
+disp('----------------------------------------------------');
+
+% --- Executes just before IndividualNavigation_DataPrepare is made visible.
+function figure1_CreateFcn(hObject, eventdata, handles, varargin)
+% This function has no output args, see OutputFcn.
+% hObject    handle to figure
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+% varargin   command line arguments to IndividualNavigation_DataPrepare (see VARARGIN)
