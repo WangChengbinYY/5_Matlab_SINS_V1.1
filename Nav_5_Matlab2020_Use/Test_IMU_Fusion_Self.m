@@ -3,8 +3,8 @@
     
     %profile on
     
-    load('E:\5_实验记录\20200107_单位办公桌静态试验汇总\静止放置\ADI_L_B_1_静止2小时\ADI_L.mat');
-    % load('E:\5_实验记录\20200107_单位办公桌静态试验汇总\静止放置\MPU_L_A_1_静止2小时\MPU_L.mat');
+    %load('E:\5_实验记录\20200107_单位办公桌静态试验汇总\静止放置\ADI_L_B_1_静止2小时\ADI_L.mat');
+     load('E:\5_实验记录\20200107_单位办公桌静态试验汇总\静止放置\MPU_L_A_1_静止2小时\MPU_L.mat');
     Fs = 200;
     IMU = IMU(100*200:end,:);
     L = length(IMU);
@@ -59,7 +59,7 @@
                 % accelerometerNoise = 加速度计噪声 均方差 单位 g  约为 2ug 
                 %Qva = diag([2e-6; 2e-6; 2e-6].^2);      
                 Qva = diag([0.0061; 0.0061; 0.0061]); 
-                % linearAccelerationNoise = 线性加速度噪声 均方差 单位 g  1mg的量级 大概估计 0.01 m/s  
+                % linearAccelerationNoise = 线性加速度噪声 均方差 单位 g  1mg的量级 大概估计 0.01 m/s2  
                 %Qwa = diag([1e-3; 1e-3; 1e-3].^2);   
                 Qwa = diag([0.009623; 0.009623; 0.009623]); 
 %                 Qw = [(Qwb+Qvg).*(periodKalman^2)	Qwb.*(-periodKalman)	zeros(3,3);
@@ -67,7 +67,8 @@
 %                           zeros(3,3)                                   zeros(3,3)                       Qwa];
                 Qw = PPrior;
             %-----------Qv阵 观测噪声协方差阵的初始化  器件参数相关
-                Qv = (Qvg + Qwb).*(periodKalman^2) + Qva.*0.1 + Qwa.*0.1;                
+                %Qv = (Qvg + Qwb).*(periodKalman^2) + Qva.*0.1 + Qwa.*0.1;    
+                Qv = (Qvg + Qwb).*(periodKalman^2) + Qva + Qwa;  
             
     %------循环解算
         for i = 1:L
