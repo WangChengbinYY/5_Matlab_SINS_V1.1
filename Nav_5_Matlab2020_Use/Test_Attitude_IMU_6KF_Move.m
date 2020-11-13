@@ -72,7 +72,7 @@
 
     % 系统测量噪声方差阵 
         % 这次实验采用 仿真 姿态观测量来进行  按照KF的更新周期，精度按照 0.01度 来实验
-        varZ = deg2rad(0.1);    % Z 的姿态观测精度  单位 度
+        varZ = deg2rad(0.001);    % Z 的姿态观测精度  单位 度
         varDB = 10*log10(varZ^2);
         
         AttitudeTrue = zeros(L_Z,3);   % 观测到的姿态  按照  X Y Z 欧拉角设定
@@ -148,9 +148,14 @@ for i_s = 1:L_s
              %（1）计算 观测量 Z                                    
                 j = j+1;
                 recordKFTime(j,1) = i;
-                Z(1,1) = recordOrient(i,3) - AttitudeTrue(1,1);
-                Z(2,1) = recordOrient(i,2) - AttitudeTrue(1,2);
-                Z(3,1) = recordOrient(i,1) - AttitudeTrue(1,3);
+%                 Z(1,1) = recordOrient(i,3) - AttitudeTrue(1,1);
+%                 Z(2,1) = recordOrient(i,2) - AttitudeTrue(1,2);
+%                 Z(3,1) = recordOrient(i,1) - AttitudeTrue(1,3);
+                
+                 Z(1,1) = recordOrient(i,3) - Attitude0(1,1);
+                Z(2,1) = recordOrient(i,2) - Attitude0(1,2);
+                Z(3,1) = recordOrient(i,1) - Attitude0(1,3);
+                
                 % recordOrient(i,:) 对应 四元数 priorOrient
 %                 trueOrient = quaternion([AttitudeTrue(1,3),AttitudeTrue(1,2),AttitudeTrue(1,1)],'euler','ZYX','frame');  
 %                 Z_q = conj(trueOrient)*priorOrient;
@@ -278,7 +283,7 @@ end
             
        % 状态  方差 Kk
         for i =4
-            for j = 1
+            for j =1
                 figure; 
                 tmpPk = zeros(recordKFNum,1);            
                 for k = 1:recordKFNum

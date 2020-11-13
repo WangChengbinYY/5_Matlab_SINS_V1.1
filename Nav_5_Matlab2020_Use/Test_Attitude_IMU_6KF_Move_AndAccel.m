@@ -1,4 +1,4 @@
-% -----------直接使用加速度计来 测试 KF 滤波的参数 的调试  还包括 中间运动情况的测试！
+% 利用加计对水平姿态角的估计
 % 1. 获取原始数据
     clear;clc;
     load('E:\5_实验记录\20200916_ADI_R_B_姿态实验\半仿真数据\IMUData.mat')
@@ -57,6 +57,8 @@
     recordPk = zeros(6,6,L_Z);
     recordPkk_1 = zeros(6,6,L_Z);
     recordKk = zeros(6,3,L_Z);
+    recordZk = zeros(L_Z,3);
+    recordZkNew = zeros(L_Z,3);
     
     % 惯导解算的中间存储变量 用于进行旋转矢量补偿 前一时刻的角增量
     deltaAng_prior = zeros(1,3);  
@@ -182,6 +184,8 @@ for i_s = 1:L_s
                 Z(2,1) = recordOrient(i,2) - tpAtt(1,2);
                 Z(3,1) = recordOrient(i,1) - tpAtt(1,1);
                 
+                recordZk(j,:) = [Z(3,1),Z(2,1),Z(1,1)];                
+                
             % （2）计算 状态观测的一步预测  
                 XPrior = A*XPost;
                 recordXkk_1(j,:) = XPrior';
@@ -227,10 +231,16 @@ for i_s = 1:L_s
                     recordOrient(i,:) =  euler(postOrient,'ZYX','frame'); 
                     recordGyroBias(i,:) = gyroBias;
                     recordKFNum = j;
+                    
+                    recordZkNew(j,:) = recordOrient(i,:) - tpAtt(1,:);
          end        
     end
 end   
-
+        
+        figure;
+        plot(rad2deg(recordZk(:,3)),'r');
+        hold on; plot(rad2deg(recordXk(:,3)),'g');
+        hold on; plot(rad2deg(recordZkNew(:,3)),'b');
    
    % 绘制结果
         % 零偏估计比较
@@ -260,64 +270,64 @@ end
         sqrt(var(recordOrient_deg(:,2)))
         sqrt(var(recordOrient_deg(:,1)))
         
-    timeRecord = recordKFTime(1:recordKFNum,1)./Fs;    
-    % 状态量 Xk
-        for i = 1:6
-            figure;
-            plot(timeRecord,recordXk(1:recordKFNum,i));
-            title(['X',num2str(i),' 状态量']);            
-        end 
-     
-      % 状态  方差 Pk
-     for i = 5
-            for j = 5
-                figure; 
-                tmpPk = zeros(recordKFNum,1);            
-                for k = 1:recordKFNum
-                    tmpPk(k,1) = recordPk(i,j,k); 
-                end 
-                plot(timeRecord,tmpPk);
-                title(['Pk P',num2str(i),num2str(j),' 状态量方差']);     
-            end
-    end       
-         
-      % 状态  方差 Pkk_1
-        for i = 1
-            for j =4
-                figure; 
-                tmpPk = zeros(recordKFNum,1);            
-                for k = 1:recordKFNum
-                    tmpPkk_1(k,1) = recordPkk_1(i,j,k); 
-                end 
-                plot(timeRecord,tmpPkk_1);
-                title(['Pkk-1 P',num2str(i),num2str(j),'-1 状态量方差']);     
-            end
-        end  
-            
-       % 状态  方差 Kk
-        for i =4
-            for j = 1
-                figure; 
-                tmpPk = zeros(recordKFNum,1);            
-                for k = 1:recordKFNum
-                    tmpKk(k,1) = recordKk(i,j,k); 
-                end 
-                plot(timeRecord,tmpKk);
-                title(['Kk K',num2str(i),num2str(j),' 状态量方差']);     
-            end
-        end        
-        
-        P1_0 = recordPkk_1(:,:,1);
-        P1 = recordPk(:,:,1);
-        K1 = recordKk(:,:,1);
-        
-        P2_0 = recordPkk_1(:,:,2);
-        P2 = recordPk(:,:,2);
-        K2 = recordKk(:,:,2);       
-        
-        tpPkk_1 = recordPkk_1(:,:,end);
-        tpPk = recordPk(:,:,2);
-        
+%     timeRecord = recordKFTime(1:recordKFNum,1)./Fs;    
+%     % 状态量 Xk
+%         for i = 1:6
+%             figure;
+%             plot(timeRecord,recordXk(1:recordKFNum,i));
+%             title(['X',num2str(i),' 状态量']);            
+%         end 
+%      
+%       % 状态  方差 Pk
+%      for i = 5
+%             for j = 5
+%                 figure; 
+%                 tmpPk = zeros(recordKFNum,1);            
+%                 for k = 1:recordKFNum
+%                     tmpPk(k,1) = recordPk(i,j,k); 
+%                 end 
+%                 plot(timeRecord,tmpPk);
+%                 title(['Pk P',num2str(i),num2str(j),' 状态量方差']);     
+%             end
+%     end       
+%          
+%       % 状态  方差 Pkk_1
+%         for i = 1
+%             for j =4
+%                 figure; 
+%                 tmpPk = zeros(recordKFNum,1);            
+%                 for k = 1:recordKFNum
+%                     tmpPkk_1(k,1) = recordPkk_1(i,j,k); 
+%                 end 
+%                 plot(timeRecord,tmpPkk_1);
+%                 title(['Pkk-1 P',num2str(i),num2str(j),'-1 状态量方差']);     
+%             end
+%         end  
+%             
+%        % 状态  方差 Kk
+%         for i =4
+%             for j = 1
+%                 figure; 
+%                 tmpPk = zeros(recordKFNum,1);            
+%                 for k = 1:recordKFNum
+%                     tmpKk(k,1) = recordKk(i,j,k); 
+%                 end 
+%                 plot(timeRecord,tmpKk);
+%                 title(['Kk K',num2str(i),num2str(j),' 状态量方差']);     
+%             end
+%         end        
+%         
+%         P1_0 = recordPkk_1(:,:,1);
+%         P1 = recordPk(:,:,1);
+%         K1 = recordKk(:,:,1);
+%         
+%         P2_0 = recordPkk_1(:,:,2);
+%         P2 = recordPk(:,:,2);
+%         K2 = recordKk(:,:,2);       
+%         
+%         tpPkk_1 = recordPkk_1(:,:,end);
+%         tpPk = recordPk(:,:,2);
+%         
         
         
         
