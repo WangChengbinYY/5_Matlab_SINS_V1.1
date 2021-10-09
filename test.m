@@ -6,6 +6,12 @@
 % 设定8个点的起始终止位置
 %   磁强计对应的数据位置 为  (num+1)/2
 %   第9点回到原始位置，可用于比较重复性，但是手工操作不一定对齐！
+
+clear;clc;
+IMU = importdata('D:\清华博士\n_实验记录\20200312_办公桌面静止旋转\MPU_L_1_UA_IMU_MPU.txt');
+Magnetic(:,1:2) = IMU(:,1:2);    Magnetic(:,3:5) = IMU(:,9:11); 
+
+
 Num = 9;
 Location = zeros(Num,2);  %每段数据的起始终止位置
 Location(1,1) = 500;    Location(1,2) = 2000;      
@@ -119,5 +125,5 @@ hold on; plot(0,0,'ro');
 hold on; plot(Mean_MagNew(:,1),Mean_MagNew(:,2),'ro');
 
 figure;
-plot(Yaw_Old,'*-'); grid on; 
-hold on; plot(Yaw_New,'ro');
+plot(Yaw_New,'*-'); grid on; 
+% hold on; plot(Yaw_Old,'ro');

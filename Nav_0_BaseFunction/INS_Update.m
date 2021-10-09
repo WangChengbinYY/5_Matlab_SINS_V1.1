@@ -58,8 +58,8 @@ T_DeltaV_sf_n = TempM*insdata_pre.C_b_n*(insdata_now.DeltaV_ib_b+T_DeltaV_rot_b+
 %--------------------------Delta_Vn-------------------------------
 %-----------------------------------------------------------------
 % 1. 计算 当前时刻的速度增量INSData.DeltaV_n
-insdata_now.DeltaV_n = T_DeltaV_sf_n + T_Delta_Vn_cor;
-% 2. 计算 当前时刻的速度
+insdata_now.DeltaV_n = T_DeltaV_sf_n + T_Delta_Vn_cor; 
+% 2. 计算 当前时刻的速度 
 insdata_now.vel = insdata_pre.vel + insdata_now.DeltaV_n;
 
 %% 三、位置更新

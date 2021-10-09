@@ -1,5 +1,5 @@
-function M_v = Math_v2m_askew(v)
-% ½«Ê¸Á¿×ª»¯ÎªĞ±¶Ô³É¾ØÕó.
+function M_v = self_askew(v)
+% å°†çŸ¢é‡è½¬åŒ–ä¸ºæ–œå¯¹æˆçŸ©é˜µ.
 %
 % Prototype: M_v = askew(v)
 % Input:     v - 3x1 vector
@@ -7,7 +7,6 @@ function M_v = Math_v2m_askew(v)
 %                     |  0   -v(3)  v(2) |
 %           M_v = | v(3)  0    -v(1) |
 %                     |-v(2)  v(1)  0    |
-%
 
 
     M_v = [ 0,     -v(3),   v(2); 

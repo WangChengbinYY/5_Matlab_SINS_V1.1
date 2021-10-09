@@ -131,6 +131,6 @@
 % profile off
     
 %% 4.Êý¾Ý»æÍ¼
-    Plot_AVP_Group(Result_AVP1);
+    Plot_AVP_Group(Result_AVP);
     %Plot_AVP_Group(Result_AVP1,Result_AVP2);  %Result_AVP ºìÉ«
     %Plot_AVP_XkPk_Group(Result_AVP0,XkPk0);

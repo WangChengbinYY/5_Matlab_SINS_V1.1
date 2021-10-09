@@ -98,25 +98,25 @@ if nargin == 2
     figure;
     set(gcf,'position',[250,250,1200,480]);
     subplot(1,3,1);
-    plot(AVP0(:,1),AVP0(:,2).*(180/pi),'r');
+    plot(AVP0(:,1),AVP0(:,2).*(180/pi),'b');
     hold on;
-    plot(AVP1(:,1),AVP1(:,2).*(180/pi));    
+    plot(AVP1(:,1),AVP1(:,2).*(180/pi),'r');    
     xlabel('\it t \rm / s');
     ylabel('\it \theta \rm / \circ');
     title('姿态-俯仰');
     
     subplot(1,3,2);
-    plot(AVP0(:,1),AVP0(:,3).*(180/pi),'r');
+    plot(AVP0(:,1),AVP0(:,3).*(180/pi),'b');
     hold on;
-    plot(AVP1(:,1),AVP1(:,3).*(180/pi));
+    plot(AVP1(:,1),AVP1(:,3).*(180/pi),'r');
     xlabel('\it t \rm / s');
     ylabel('\it \gamma \rm / \circ');
     title('姿态-横滚');
     
     subplot(1,3,3);
-    plot(AVP0(:,1),AVP0(:,4).*(180/pi),'r');
+    plot(AVP0(:,1),AVP0(:,4).*(180/pi),'b');
     hold on;
-    plot(AVP1(:,1),AVP1(:,4).*(180/pi));
+    plot(AVP1(:,1),AVP1(:,4).*(180/pi),'r');
     xlabel('\it t \rm / s');
     ylabel('\it \psi \rm / \circ');
     title('姿态-航向');
@@ -125,25 +125,25 @@ if nargin == 2
     figure;
     set(gcf,'position',[250,250,1200,480]);
     subplot(1,3,1);
-    plot(AVP0(:,1),AVP0(:,5),'r');
+    plot(AVP0(:,1),AVP0(:,5),'b');
     hold on;
-    plot(AVP1(:,1),AVP1(:,5));
+    plot(AVP1(:,1),AVP1(:,5),'r');
     xlabel('\it t \rm / s');
     ylabel('\it V_E \rm / m/s');
     title('速度-东向');
 
     subplot(1,3,2);
-    plot(AVP0(:,1),AVP0(:,6),'r');
+    plot(AVP0(:,1),AVP0(:,6),'b');
     hold on;
-    plot(AVP1(:,1),AVP1(:,6));
+    plot(AVP1(:,1),AVP1(:,6),'r');
     xlabel('\it t \rm / s');
     ylabel('\it V_N \rm / m/s');
     title('速度-北向');
 
     subplot(1,3,3);
-    plot(AVP0(:,1),AVP0(:,7),'r');
+    plot(AVP0(:,1),AVP0(:,7),'b');
     hold on;
-    plot(AVP1(:,1),AVP1(:,7));
+    plot(AVP1(:,1),AVP1(:,7),'r');
     xlabel('\it t \rm / s');
     ylabel('\it V_U \rm / m/s');
     title('速度-天向');
@@ -154,25 +154,25 @@ if nargin == 2
     figure;
     set(gcf,'position',[250,250,1200,480]);
     subplot(1,3,1);
-    plot(AVP0(:,1),(AVP0(:,8)-AVP0(1,8))*Rmh*cos(AVP0(1,8)),'r');
+    plot(AVP0(:,1),(AVP0(:,8)-AVP0(1,8))*Rmh*cos(AVP0(1,8)),'b');
     hold on;
-    plot(AVP1(:,1),(AVP1(:,8)-AVP1(1,8))*Rmh*cos(AVP1(1,8)));
+    plot(AVP1(:,1),(AVP1(:,8)-AVP1(1,8))*Rmh*cos(AVP1(1,8)),'r');
     xlabel('\it t \rm / s');
     ylabel('\it 北向 \rm / m');
     title('位置-北向');
     
     subplot(1,3,2);
-    plot(AVP0(:,1),(AVP0(:,9)-AVP0(1,9))*Rnh,'r');
+    plot(AVP0(:,1),(AVP0(:,9)-AVP0(1,9))*Rnh,'b');
     hold on;
-    plot(AVP1(:,1),(AVP1(:,9)-AVP1(1,9))*Rnh);
+    plot(AVP1(:,1),(AVP1(:,9)-AVP1(1,9))*Rnh,'r');
     xlabel('\it t \rm / s');
     ylabel('\it 东向 \rm / m');
     title('位置-东向');
     
     subplot(1,3,3);
-    plot(AVP0(:,1),AVP0(:,10),'r');
+    plot(AVP0(:,1),AVP0(:,10),'b');
     hold on;
-    plot(AVP1(:,1),AVP1(:,10));
+    plot(AVP1(:,1),AVP1(:,10),'r');
     xlabel('\it t \rm / s');
     ylabel('\it 高程 \rm / m');
     title('位置-高程');    
@@ -180,9 +180,9 @@ if nargin == 2
     figure;
     set(gcf,'position',[250,250,1200,240]);
     subplot(1,2,1);
-    plot(AVP0(:,1),(sqrt(AVP0(:,5).^2+AVP0(:,6).^2+AVP0(:,7).^2)),'r');
+    plot(AVP0(:,1),(sqrt(AVP0(:,5).^2+AVP0(:,6).^2+AVP0(:,7).^2)),'b');
     hold on;
-    plot(AVP1(:,1),(sqrt(AVP1(:,5).^2+AVP1(:,6).^2+AVP1(:,7).^2)));
+    plot(AVP1(:,1),(sqrt(AVP1(:,5).^2+AVP1(:,6).^2+AVP1(:,7).^2)),'r');
     xlabel('\it t \rm / s');
     ylabel('\it V \rm / m/s');
     title('绝对速度');    
@@ -192,9 +192,9 @@ if nargin == 2
     plot(0, 0, 'rp');     %在起始位置画一个 五角星
     %legend(sprintf('%.6f, %.6f / 度', AVP0(1,8)*180/pi,AVP0(1,9)*180/pi));
     hold on;    
-    plot((AVP0(:,9)-AVP0(1,9))*Rnh,(AVP0(:,8)-AVP0(1,8))*Rmh*cos(AVP0(1,8)),'r');
+    plot((AVP0(:,9)-AVP0(1,9))*Rnh,(AVP0(:,8)-AVP0(1,8))*Rmh*cos(AVP0(1,8)),'b');
     hold on;
-    plot((AVP1(:,9)-AVP1(1,9))*Rnh,(AVP1(:,8)-AVP1(1,8))*Rmh*cos(AVP1(1,8)));
+    plot((AVP1(:,9)-AVP1(1,9))*Rnh,(AVP1(:,8)-AVP1(1,8))*Rmh*cos(AVP1(1,8)),'r');
     xlabel('\it 东向 \rm / m');
     ylabel('\it 北向 \rm / m');
     title('行驶路线');
